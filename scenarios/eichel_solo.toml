@@ -1,0 +1,25 @@
+# Eichel-Solo mit 7 Trumpf und Gras-Sau. Wie verteilen sich die übrigen 7 Trumpf?
+seed = 5
+
+[game]
+type  = "solo"
+trump = "eichel"
+
+[me]
+cards = ["EO", "GO", "HO", "EU", "GU", "EA", "E10", "GA"]
+
+[[query]]
+name  = "Ein Gegner hat ≥4 Trumpf"
+where = "any(p in others, p.count(trumpf) >= 4)"
+
+[[query]]
+name  = "Trumpf 3-2-2 verteilt"
+where = "all(p in others, p.count(trumpf) >= 2 and p.count(trumpf) <= 3)"
+
+[[query]]
+name  = "SO mit höchstens einem Begleiter"
+where = "any(p in others, p.has(SO) and p.count(trumpf) <= 2)"
+
+[[query]]
+name  = "Gras-Sau geht durch"
+where = "all(p in others, p.has_any(gras))"

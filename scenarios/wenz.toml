@@ -1,0 +1,31 @@
+# Wenz mit EU und GU. Wo stehen HU und SU?
+seed = 4
+
+[game]
+type = "wenz"
+
+[table]
+vorhand = "left"
+
+[me]
+cards = ["EU", "GU", "EA", "E10", "EK", "GA", "G10", "SA"]
+
+[[query]]
+name  = "HU und SU beim selben Gegner"
+where = "any(p in others, p.has(HU, SU))"
+
+[[query]]
+name  = "HU und SU getrennt"
+where = "num(p in others, p.has_any(HU | SU)) == 2"
+
+[[query]]
+name  = "Vorhand hat einen Unter"
+where = "vorhand.has_any(unter)"
+
+[[query]]
+name  = "Ein Gegner hat ≥4 Eichel (inkl. EO)"
+where = "any(p in others, p.count(eichel) >= 4)"
+
+[[query]]
+name  = "Herz-Sau oder Herz-10 steht blank"
+where = "any(p in others, p.has_any(HA | H10) and p.count(herz) == 1)"

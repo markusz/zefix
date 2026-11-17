@@ -1,0 +1,28 @@
+# Dein Ausgangsbeispiel, beide Farbkarten aus derselben Farbe.
+# Mit der Rufregel heißt das hier: genau zwei Gras ohne Sau.
+seed = 2
+
+[game]
+type   = "sauspiel"
+called = "gras"
+
+[me]
+cards = ["EO", "GO"]
+slots = [
+  { from = "unter",       count = 2 },
+  { from = "herz",        count = 2 },
+  { from = "farbe - sau", count = 2 },
+]
+where = "any(f in farben, me.count(f) == 2)"
+
+[[query]]
+name  = "Ein Gegner hat beide Ober + ≥2 Trumpf"
+where = "any(p in opponents, p.has(HO, SO) and p.count(trumpf - ober) >= 2)"
+
+[[query]]
+name  = "Partner hat mindestens einen Ober"
+where = "partner.has_any(HO | SO)"
+
+[[query]]
+name  = "Ruffarbe: ein Gegner frei"
+where = "any(p in opponents, p.frei(gras))"

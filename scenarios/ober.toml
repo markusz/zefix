@@ -1,0 +1,27 @@
+seed = 42
+
+[game]
+type   = "sauspiel"
+called = "schellen"
+
+[me]
+cards = ["EO", "GO"]
+slots = [
+  { from = "unter",       count = 2 },
+  { from = "herz",        count = 2 },
+  { from = "farbe - sau", count = 2 },
+]
+# Ruf-Situation: beide Farbkarten aus derselben Farbe
+# where = "any(f in farben, me.count(f) == 2)"
+
+[[query]]
+name  = "Ein Gegner hat beide Ober + ≥2 Trumpf"
+where = "any(p in others, p.has(HO, SO) and p.count(trumpf - ober) >= 2)"
+
+[[query]]
+name  = "Partner hat ≥3 Trumpf"
+where = "partner.count(trumpf) >= 3"
+
+[[query]]
+name  = "Partner hat einen der beiden Ober"
+where = "partner.has_any(HO | SO)"

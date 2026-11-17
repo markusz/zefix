@@ -1,0 +1,30 @@
+# Sauspiel auf die Eichel-Sau mit einer einzigen Eichel (E7).
+# Frage: Läuft die Rufsau, wenn ich Eichel anspiele?
+seed = 1
+
+[game]
+type   = "sauspiel"
+called = "eichel"
+
+[me]
+cards = ["EO", "HO", "GU", "HA", "HK", "E7", "GA", "S9"]
+
+[[query]]
+name  = "Rufsau läuft (beide Gegner haben Eichel)"
+where = "all(p in opponents, p.has_any(eichel))"
+
+[[query]]
+name  = "Ein Gegner ist Eichel-frei"
+where = "any(p in opponents, p.frei(eichel))"
+
+[[query]]
+name  = "Partner hat die Sau blank"
+where = "partner.count(eichel) == 1"
+
+[[query]]
+name  = "Partner hat ≥4 Trumpf"
+where = "partner.count(trumpf) >= 4"
+
+[[query]]
+name  = "Ein Gegner hat GO und SO"
+where = "any(p in opponents, p.has(GO, SO))"

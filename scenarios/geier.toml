@@ -1,0 +1,20 @@
+# Geier mit drei Obern; SO fehlt. Draußen sind nur noch 4 Eichel (EU E9 E8 E7).
+seed = 6
+
+[game]
+type = "geier"
+
+[me]
+cards = ["EO", "GO", "HO", "EA", "E10", "EK", "GA", "HA"]
+
+[[query]]
+name  = "SO beim Gegner mit ≥3 Eichel"
+where = "any(p in others, p.has(SO) and p.count(eichel) >= 3)"
+
+[[query]]
+name  = "Eichel-Sau geht durch (jeder hat Eichel)"
+where = "all(p in others, p.has_any(eichel))"
+
+[[query]]
+name  = "Kein Gegner Schellen-frei"
+where = "none(p in others, p.frei(schellen))"

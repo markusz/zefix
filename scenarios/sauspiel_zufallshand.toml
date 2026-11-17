@@ -1,0 +1,25 @@
+# Keine feste Hand: jede Hand mit ≥5 Trumpf und mindestens einem Ober, die Eichel rufen darf.
+seed = 3
+
+[game]
+type   = "sauspiel"
+called = "eichel"
+
+[me]
+where = "me.count(trumpf) >= 5 and me.has_any(ober)"
+
+[[query]]
+name  = "Partner hat ≥3 Trumpf"
+where = "partner.count(trumpf) >= 3"
+
+[[query]]
+name  = "Ein Gegner hat ≥5 Trumpf"
+where = "any(p in opponents, p.count(trumpf) >= 5)"
+
+[[query]]
+name  = "Kein Gegner hat mehr Trumpf als ich"
+where = "all(p in opponents, p.count(trumpf) <= me.count(trumpf))"
+
+[[query]]
+name  = "Mindestens ein Gegner ist in einer Farbe frei"
+where = "any(p in opponents, num(f in farben, p.frei(f)) >= 1)"
