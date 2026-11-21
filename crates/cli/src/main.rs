@@ -66,7 +66,7 @@ fn parse_count(s: &str) -> Result<u64, String> {
 fn load(path: &Path) -> Result<Scenario> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("kann {} nicht lesen", path.display()))?;
-    Scenario::from_toml(&text)
+    Ok(Scenario::from_toml(&text)?)
 }
 
 fn check(config: &Path) -> Result<()> {

@@ -6,7 +6,7 @@
 
 ## Rust
 - Idiomatic Rust. No code that can panic in production paths: no `unwrap`, `expect`, `panic!`. Indexing only on fixed-size arrays with indices derived from enums or bounded by construction.
-- Errors: `thiserror` for typed library errors (`LangError`, `GameError`), `anyhow` for config loading and the CLI.
+- Errors: `thiserror` for all core errors (`LangError`, `GameError`, `ScenarioError`, `SimError`) so front ends can match on them; `anyhow` only in front ends.
 - Structs and enums instead of tuples; enums instead of bools.
 - No magic values; name constants (`DECK_SIZE`, `HAND_SIZE`, `Z_95`, ...).
 - Functions > 30 lines are an amber flag, > 50 a red flag. Flat lookup tables may exceed 30 lines.

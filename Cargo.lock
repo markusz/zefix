@@ -266,7 +266,6 @@ dependencies = [
 name = "schafsim-core"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "rand_xoshiro",
  "rayon",
  "serde",

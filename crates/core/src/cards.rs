@@ -212,6 +212,19 @@ impl Cards {
     }
 }
 
+/// Space-separated in deck order, e.g. `EO GO HU`.
+impl fmt::Display for Cards {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, card) in self.iter().enumerate() {
+            if i > 0 {
+                f.write_str(" ")?;
+            }
+            write!(f, "{card}")?;
+        }
+        Ok(())
+    }
+}
+
 impl FromIterator<Card> for Cards {
     fn from_iter<I: IntoIterator<Item = Card>>(iter: I) -> Self {
         iter.into_iter().fold(Cards::EMPTY, |acc, c| acc | c.mask())
