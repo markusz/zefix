@@ -1,8 +1,10 @@
+mod report;
+
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use schafsim::report::{self, RunInfo};
-use schafsim::scenario::Scenario;
-use schafsim::sim;
+use report::RunInfo;
+use schafsim_core::scenario::Scenario;
+use schafsim_core::sim;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 

@@ -4,7 +4,6 @@
 use crate::lang::eval::{Deal, Evaluator};
 use crate::sampler::Sampler;
 use crate::scenario::Scenario;
-use anyhow::{Result, bail};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rand_xoshiro::rand_core::SeedableRng;
 use rayon::prelude::*;
@@ -14,6 +13,14 @@ const CHUNK: u64 = 1 << 14;
 const CHUNK_SEED_MIX: u64 = 0x9E37_79B9_7F4A_7C15;
 /// Give up if a chunk sees this many rejections before its first accepted deal.
 const MAX_FUTILE_ATTEMPTS: u64 = 10_000_000;
+
+#[derive(Debug, thiserror::Error)]
+pub enum SimError {
+    #[error(
+        "nach {MAX_FUTILE_ATTEMPTS} Versuchen kein passendes Blatt: Rufregel bzw. `[me] where` praktisch unerfüllbar"
+    )]
+    Unsatisfiable,
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Tally {
@@ -64,9 +71,14 @@ impl Outcome {
     }
 }
 
-pub fn run(scn: &Scenario, iterations: u64, seed: u64, max_examples: usize) -> Result<Outcome> {
+pub fn run(
+    scn: &Scenario,
+    iterations: u64,
+    seed: u64,
+    max_examples: usize,
+) -> Result<Outcome, SimError> {
     let sampler = Sampler::new(scn);
-    let chunks: Vec<Result<Outcome>> = (0..iterations.div_ceil(CHUNK))
+    let chunks: Vec<Result<Outcome, SimError>> = (0..iterations.div_ceil(CHUNK))
         .into_par_iter()
         .map(|c| {
             let n = CHUNK.min(iterations - c * CHUNK);
@@ -87,15 +99,13 @@ fn run_chunk(
     n: u64,
     seed: u64,
     max_examples: usize,
-) -> Result<Outcome> {
+) -> Result<Outcome, SimError> {
     let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
     let mut out = Outcome::new(scn.queries.len());
     while out.accepted < n {
         out.attempts += 1;
         if out.accepted == 0 && out.attempts > MAX_FUTILE_ATTEMPTS {
-            bail!(
-                "nach {MAX_FUTILE_ATTEMPTS} Versuchen kein passendes Blatt: Rufregel bzw. `[me] where` praktisch unerfüllbar"
-            );
+            return Err(SimError::Unsatisfiable);
         }
         if let Some(deal) = draw(scn, sampler, &mut rng) {
             out.record(scn, &deal, max_examples);

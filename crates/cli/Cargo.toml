@@ -1,0 +1,17 @@
+[package]
+name = "schafsim-cli"
+description = "Command line front end for schafsim-core"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "schafsim"
+path = "src/main.rs"
+
+[dependencies]
+schafsim-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+comfy-table.workspace = true
+rayon.workspace = true
+serde_json.workspace = true

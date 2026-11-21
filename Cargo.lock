@@ -251,16 +251,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "schafsim"
+name = "schafsim-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
  "comfy-table",
+ "rayon",
+ "schafsim-core",
+ "serde_json",
+]
+
+[[package]]
+name = "schafsim-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "rand_xoshiro",
  "rayon",
  "serde",
- "serde_json",
  "thiserror",
  "toml",
 ]

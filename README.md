@@ -16,6 +16,15 @@ Akzeptanz 57,14 % (17.502.225 Versuche)
 └───────────────────────────────────────┴─────────┴───────┴───────────┘
 ```
 
+## Aufbau
+
+| Crate | Inhalt |
+|---|---|
+| `crates/core` (`schafsim-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
+| `crates/cli` (`schafsim-cli`) | Kommandozeile `schafsim` |
+
+Installieren: `cargo install --path crates/cli`
+
 ## CLI
 
 ```

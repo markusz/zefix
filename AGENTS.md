@@ -1,5 +1,9 @@
 # Ground rules
 
+## Workspace
+- `crates/core` (`schafsim-core`): game rules, query language, simulation, statistics. No I/O, no output formatting.
+- `crates/cli` (`schafsim-cli`, binary `schafsim`): argument parsing and rendering only; all logic lives in core.
+
 ## Rust
 - Idiomatic Rust. No code that can panic in production paths: no `unwrap`, `expect`, `panic!`. Indexing only on fixed-size arrays with indices derived from enums or bounded by construction.
 - Errors: `thiserror` for typed library errors (`LangError`, `GameError`), `anyhow` for config loading and the CLI.
@@ -14,4 +18,4 @@
 - CLI output and user-facing errors in German, code and comments in English.
 
 ## Testing
-- Simulation results are checked against closed-form hypergeometric results in `tests/closed_form.rs`. New query features get such a test where an exact value is derivable.
+- Simulation results are checked against closed-form hypergeometric results in `crates/core/tests/closed_form.rs`. New query features get such a test where an exact value is derivable.

@@ -1,0 +1,13 @@
+[package]
+name = "schafsim-core"
+description = "Schafkopf deal simulation: game rules, query language, Monte Carlo engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+rand_xoshiro.workspace = true
+rayon.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
