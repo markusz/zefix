@@ -2,6 +2,7 @@ use crate::game::Seat;
 use crate::lang::eval::Deal;
 use crate::scenario::Scenario;
 use crate::sim::Outcome;
+use comfy_table::{CellAlignment, Table, presets};
 use serde_json::json;
 use std::time::Duration;
 
@@ -60,9 +61,13 @@ fn de_int(n: u64) -> String {
 pub fn text(scn: &Scenario, o: &Outcome, info: &RunInfo) -> String {
     let mut out = header(scn, o, info);
     out.push('\n');
-    for (q, tally) in scn.queries.iter().zip(&o.tallies) {
-        out += &query_line(&q.name, tally.hits, o.accepted);
-    }
+    let rows: Vec<Vec<String>> = scn
+        .queries
+        .iter()
+        .zip(&o.tallies)
+        .map(|(q, tally)| query_row(&q.name, tally.hits, o.accepted))
+        .collect();
+    out += &table(rows);
     for (q, tally) in scn.queries.iter().zip(&o.tallies) {
         for deal in &tally.examples {
             out += &format!("\n{}\n{}", q.name, format_deal(scn, deal));
@@ -89,15 +94,33 @@ fn header(scn: &Scenario, o: &Outcome, info: &RunInfo) -> String {
     out
 }
 
-fn query_line(name: &str, hits: u64, n: u64) -> String {
+const HEADERS: [&str; 4] = ["Abfrage", "P", "±95 %", "Treffer"];
+const NUMERIC_COLUMNS: std::ops::Range<usize> = 1..4;
+
+fn query_row(name: &str, hits: u64, n: u64) -> Vec<String> {
     let p = ratio(hits, n);
     let ci = wilson(hits, n);
     let half = (p - ci.lo).max(ci.hi - p);
-    format!(
-        "{:>8} %  ±{:<5}  {name}\n",
-        de_decimal(PERCENT * p, 2),
+    vec![
+        name.to_string(),
+        format!("{} %", de_decimal(PERCENT * p, 2)),
         de_decimal(PERCENT * half, 2),
-    )
+        de_int(hits),
+    ]
+}
+
+fn table(rows: Vec<Vec<String>>) -> String {
+    let mut table = Table::new();
+    table
+        .load_style(presets::UTF8_FULL_CONDENSED)
+        .set_header(HEADERS)
+        .add_rows(rows);
+    for i in NUMERIC_COLUMNS {
+        if let Some(col) = table.column_mut(i) {
+            col.set_cell_alignment(CellAlignment::Right);
+        }
+    }
+    format!("{table}\n")
 }
 
 pub fn format_deal(scn: &Scenario, deal: &Deal) -> String {

@@ -7,9 +7,13 @@ $ schafsim run scenarios/ober.toml
 Sauspiel auf die Schellen-Sau · 10.000.000 Deals · Seed 42 · 0,21 s
 Akzeptanz 57,14 % (17.502.225 Versuche)
 
-   16,48 %  ±0,02   Ein Gegner hat beide Ober + ≥2 Trumpf
-   46,74 %  ±0,03   Partner hat ≥3 Trumpf
-   52,57 %  ±0,03   Partner hat einen der beiden Ober
+┌───────────────────────────────────────┬─────────┬───────┬───────────┐
+│ Abfrage                               ┆       P ┆ ±95 % ┆   Treffer │
+╞═══════════════════════════════════════╪═════════╪═══════╪═══════════╡
+│ Ein Gegner hat beide Ober + ≥2 Trumpf ┆ 16,48 % ┆  0,02 ┆ 1.647.644 │
+│ Partner hat ≥3 Trumpf                 ┆ 46,74 % ┆  0,03 ┆ 4.673.678 │
+│ Partner hat einen der beiden Ober     ┆ 52,57 % ┆  0,03 ┆ 5.256.528 │
+└───────────────────────────────────────┴─────────┴───────┴───────────┘
 ```
 
 ## CLI
@@ -19,7 +23,7 @@ schafsim run <config> [-n 1e6] [--seed N] [--format text|json] [--examples N] [-
 schafsim check <config>
 ```
 
-`±` ist die halbe Breite des 95-%-Wilson-Intervalls. Gleicher Seed → gleiches Ergebnis, unabhängig von der Thread-Zahl.
+`±95 %` ist die halbe Breite des 95-%-Wilson-Intervalls. Gleicher Seed → gleiches Ergebnis, unabhängig von der Thread-Zahl.
 
 ## Config
 
@@ -55,16 +59,16 @@ where = "any(p in others, p.has(HO, SO) and p.count(trumpf - ober) >= 2)"
 
 ## Sprache
 
-| | |
-|---|---|
-| Karten | `EO` `GU` `HA` `S10` (auch `SZ`) `EK` `G9` … |
-| Mengen | `trumpf` `farbe` `alle` · `ober` `unter` `sau` `zehn` `koenig` `neun` `acht` `sieben` · `eichel` `gras` `herz` `schellen` |
-| Mengen-Operatoren | `\|` Vereinigung, `&` Schnitt, `-` ohne |
-| Spieler | `me` `left` `across` `right` · `partner` (Sauspiel) · `vorhand` (mit `[table]`) |
-| Methoden | `p.count(M)` · `p.has(K, …)` alle · `p.has_any(M)` · `p.frei(M)` |
-| Quantoren | `any` `all` `none` `(x in G, …)` → Wahrheitswert · `num(x in G, …)` → Zahl |
-| Gruppen | `others` `opponents` `players` (Spieler) · `farben` `suits` (Farben) |
-| Logik | `and` `or` `not` · `==` `!=` `<` `<=` `>` `>=` · `+` `-` · Klammern |
+|                   |                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Karten            | `EO` `GU` `HA` `S10` (auch `SZ`) `EK` `G9` …                                                                              |
+| Mengen            | `trumpf` `farbe` `alle` · `ober` `unter` `sau` `zehn` `koenig` `neun` `acht` `sieben` · `eichel` `gras` `herz` `schellen` |
+| Mengen-Operatoren | `\|` Vereinigung, `&` Schnitt, `-` ohne                                                                                   |
+| Spieler           | `me` `left` `across` `right` · `partner` (Sauspiel) · `vorhand` (mit `[table]`)                                           |
+| Methoden          | `p.count(M)` · `p.has(K, …)` alle · `p.has_any(M)` · `p.frei(M)`                                                          |
+| Quantoren         | `any` `all` `none` `(x in G, …)` → Wahrheitswert · `num(x in G, …)` → Zahl                                                |
+| Gruppen           | `others` `opponents` `players` (Spieler) · `farben` `suits` (Farben)                                                      |
+| Logik             | `and` `or` `not` · `==` `!=` `<` `<=` `>` `>=` · `+` `-` · Klammern                                                       |
 
 Farbnamen gelten spielabhängig: im Sauspiel ist `herz` = HA H10 HK H9 H8 H7, `eichel` ohne EO/EU; im Wenz gehört EO zu `eichel`. `farben` sind die Nicht-Trumpf-Farben, `opponents` im Sauspiel die beiden Nicht-Partner, sonst alle drei.
 
