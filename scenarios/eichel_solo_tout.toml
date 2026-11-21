@@ -1,0 +1,52 @@
+# Eichel-Solo Tout mit 7 Trumpf und Gras-Sau, ich sitze an Position 2.
+# Ich spiele alle Trumpf von oben, die Gras-Sau zuletzt. Gefahr droht durch
+# Gegner-Trumpf, die meine Abzieher überleben, und durch das Anspiel von Vorhand.
+seed = 5
+
+[game]
+type  = "solo"
+trump = "eichel"
+
+[table]
+vorhand = "right"               # Reihenfolge: right, me, left, across
+
+[me]
+cards = ["EO", "GO", "HO", "EU", "GU", "EA", "E10", "GA"]
+
+# Ohne Anspiel-Problem: SO überlebt EO GO HO ab 4 Trumpf, HU/SU überleben EO GO HO EU GU ab 6.
+[[query]]
+name  = "Trumpf überlebt Abziehen"
+where = "any(p in others, (p.has(SO) and p.count(trumpf) >= 4) or (p.has_any(HU | SU) and p.count(trumpf) >= 6))"
+
+# Gras-Anspiel: ich muss die Gras-Sau zugeben, jeder Gras-freie Gegner mit Trumpf sticht.
+[[query]]
+name  = "Gras-Anspiel: Sau wird gestochen"
+where = "vorhand.has_any(gras) and any(p in others, p.frei(gras) and p.has_any(trumpf))"
+
+# Herz/Schellen-Anspiel: ich steche so billig wie möglich, aber über allem, was left/across
+# als Freie nachstechen könnten. Gegen SO kostet das HO, gegen HU/SU den GU. Danach
+# überlebt SO schon mit 3 Trumpf (nur EO GO darüber), HU/SU mit 5.
+[[query]]
+name  = "Herz/Schellen-Anspiel: Stechen kostet den Tout"
+where = """
+any(f in farben, me.frei(f) and vorhand.has_any(f) and (
+  (((left.frei(f) and left.has(SO)) or (across.frei(f) and across.has(SO)))
+    and any(p in others, (p.has(SO) and p.count(trumpf) >= 3) or (p.has_any(HU | SU) and p.count(trumpf) >= 5)))
+  or (((left.frei(f) and left.has_any(HU | SU)) or (across.frei(f) and across.has_any(HU | SU)))
+    and any(p in others, p.has_any(HU | SU) and p.count(trumpf) >= 5))
+))
+"""
+
+# Worst Case: Vorhand findet das schlechteste Anspiel für mich.
+[[query]]
+name  = "Tout verloren"
+where = """
+any(p in others, (p.has(SO) and p.count(trumpf) >= 4) or (p.has_any(HU | SU) and p.count(trumpf) >= 6))
+or (vorhand.has_any(gras) and any(p in others, p.frei(gras) and p.has_any(trumpf)))
+or any(f in farben, me.frei(f) and vorhand.has_any(f) and (
+  (((left.frei(f) and left.has(SO)) or (across.frei(f) and across.has(SO)))
+    and any(p in others, (p.has(SO) and p.count(trumpf) >= 3) or (p.has_any(HU | SU) and p.count(trumpf) >= 5)))
+  or (((left.frei(f) and left.has_any(HU | SU)) or (across.frei(f) and across.has_any(HU | SU)))
+    and any(p in others, p.has_any(HU | SU) and p.count(trumpf) >= 5))
+))
+"""
