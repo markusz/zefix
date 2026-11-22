@@ -12,6 +12,9 @@ pub const CARD_SIZE: Vec2 = vec2(34.0, 48.0);
 const CARD_FACE: Color32 = Color32::from_rgb(250, 248, 240);
 const CARD_INK: Color32 = Color32::from_rgb(40, 40, 40);
 const STRIKE: Color32 = Color32::from_rgb(198, 40, 40);
+const CROWN: Color32 = Color32::from_rgb(230, 178, 40);
+const CROWN_BAND: Color32 = Color32::from_rgb(196, 140, 24);
+const CROWN_JEWEL: Color32 = Color32::from_rgb(198, 40, 40);
 const CORNER_RADIUS: f32 = 4.0;
 const FULL_UV: Rect = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 
@@ -100,6 +103,10 @@ const RULE_FACE_ALPHA: f32 = 0.8;
 const DOT_RADIUS: f32 = 1.0;
 const DASH_LENGTH: f32 = 6.0;
 const DASH_GAP: f32 = 4.0;
+/// Badge text height and distance of its centre from the bottom edge, relative to card height.
+const BADGE_TEXT: f32 = 0.14;
+const BADGE_LIFT: f32 = 0.12;
+const BADGE_PADDING: Vec2 = vec2(6.0, 1.0);
 /// Points per rounded corner of an outline path.
 const CORNER_STEPS: usize = 4;
 
@@ -108,11 +115,8 @@ pub enum RuleSymbol<'a> {
     Suit(Suit),
     /// A rank across all suits, e.g. "O" for Ober.
     Rank(&'static str),
-    /// Trump: the trump suit, or the trump rank where no suit is trump (Wenz, Geier).
-    Trumpf {
-        suit: Option<Suit>,
-        rank: &'static str,
-    },
+    /// Trump, whatever it is in the current game: a crown.
+    Trumpf,
     /// Several suits, e.g. all non-trump suits for "Farbe".
     Suits(&'a [Suit]),
 }
@@ -241,19 +245,56 @@ fn paint_rule_symbol(painter: &Painter, rect: Rect, face: &RuleFace<'_>) {
             letter(rank, at(0.27), h * 0.4);
             suit_row(painter, at(0.57), w, &Suit::ALL);
         }
-        RuleSymbol::Trumpf { suit, rank } => {
-            match suit {
-                Some(suit) => paint_suit(painter, at(0.3), w * 0.32, *suit),
-                None => letter(rank, at(0.3), h * 0.38),
-            }
-            letter("Trumpf", at(0.6), h * 0.15);
-        }
+        RuleSymbol::Trumpf => crown(painter, at(0.36), w * 0.4),
         RuleSymbol::Suits(suits) => suit_grid(painter, at(0.38), rect.size(), suits),
     }
     if face.negation == Negation::Struck {
         let center = at(0.36);
         let d = vec2(w * 0.4, h * 0.26);
         painter.line_segment([center - d, center + d], Stroke::new(2.5, STRIKE));
+    }
+}
+
+/// Crown with three points, filled from convex pieces since egui only fills convex polygons.
+fn crown(painter: &Painter, center: Pos2, radius: f32) {
+    let p = |x: f32, y: f32| center + radius * vec2(x, y);
+    let pieces = [
+        vec![
+            p(-0.85, -0.05),
+            p(0.85, -0.05),
+            p(0.85, 0.35),
+            p(-0.85, 0.35),
+        ],
+        // Points reach into the body so no anti-aliased seam shows where pieces meet.
+        vec![p(-0.85, 0.1), p(-0.85, -0.6), p(-0.4, -0.05), p(-0.4, 0.1)],
+        vec![
+            p(-0.4, 0.1),
+            p(-0.4, -0.05),
+            p(0.0, -0.8),
+            p(0.4, -0.05),
+            p(0.4, 0.1),
+        ],
+        vec![p(0.4, 0.1), p(0.4, -0.05), p(0.85, -0.6), p(0.85, 0.1)],
+    ];
+    for piece in pieces {
+        painter.add(Shape::convex_polygon(piece, CROWN, Stroke::NONE));
+    }
+    let band = Rect::from_min_max(p(-0.85, 0.35), p(0.85, 0.7));
+    painter.rect_filled(band, 0.0, CROWN_BAND);
+    let ink = Stroke::new((radius * 0.08).max(1.0), CARD_INK);
+    let outline = vec![
+        p(-0.85, 0.7),
+        p(-0.85, -0.6),
+        p(-0.4, -0.05),
+        p(0.0, -0.8),
+        p(0.4, -0.05),
+        p(0.85, -0.6),
+        p(0.85, 0.7),
+    ];
+    painter.add(Shape::closed_line(outline, ink));
+    painter.line_segment([p(-0.85, 0.35), p(0.85, 0.35)], ink);
+    for tip in [p(-0.85, -0.6), p(0.0, -0.8), p(0.85, -0.6)] {
+        painter.circle(tip, radius * 0.11, CROWN_JEWEL, ink);
     }
 }
 
@@ -287,15 +328,15 @@ fn suit_grid(painter: &Painter, center: Pos2, card: Vec2, suits: &[Suit]) {
 }
 
 fn paint_badge(painter: &Painter, rect: Rect, text: &str, fill: Color32) {
-    let font = FontId::proportional(rect.height() * 0.2);
+    let font = FontId::proportional(rect.height() * BADGE_TEXT);
     let ink = if fill.intensity() > 0.55 {
         Color32::BLACK
     } else {
         Color32::WHITE
     };
     let galley = painter.layout_no_wrap(text.to_string(), font, ink);
-    let size = galley.size() + vec2(8.0, 2.0);
-    let center = rect.center_bottom() - vec2(0.0, rect.height() * 0.16);
+    let size = galley.size() + BADGE_PADDING;
+    let center = rect.center_bottom() - vec2(0.0, rect.height() * BADGE_LIFT);
     let badge = Rect::from_center_size(center, size);
     painter.rect_filled(badge, size.y / 2.0, fill);
     painter.galley(badge.center() - galley.size() / 2.0, galley, ink);

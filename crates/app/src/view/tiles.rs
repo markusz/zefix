@@ -142,25 +142,28 @@ fn rule_hint(game: &Game, set: CardSet, op: CountOp, fixed: Cards) -> String {
         let names: Vec<String> = game.sorted(in_set).iter().map(|c| c.to_string()).collect();
         format!(" weitere (neben {})", names.join(", "))
     };
-    format!(
-        "{}: {}{besides} · klicken zum Bearbeiten",
-        set.label(),
-        op.label()
-    )
+    let name = match set {
+        CardSet::Trumpf => format!("Trumpf ({})", trump_description(game)),
+        _ => set.label().to_string(),
+    };
+    format!("{name}: {}{besides} · klicken zum Bearbeiten", op.label())
+}
+
+/// E.g. "Ober, Unter, Herz" in a Sauspiel or "Unter" in a Wenz.
+fn trump_description(game: &Game) -> String {
+    let ranks = [(Rank::Ober, "Ober"), (Rank::Unter, "Unter")]
+        .into_iter()
+        .filter(|&(rank, _)| (Cards::of_rank(rank) - game.trumps).is_empty())
+        .map(|(_, name)| name);
+    let suit = game.trump_suit().map(|s| s.display_name());
+    ranks.chain(suit).collect::<Vec<_>>().join(", ")
 }
 
 fn rule_face(game: &Game, set: CardSet, op: CountOp) -> RuleFace<'_> {
     let rank = |r: Rank| RuleSymbol::Rank(r.symbol());
     let symbol = match set {
         CardSet::Suit(suit) => RuleSymbol::Suit(suit),
-        CardSet::Trumpf => RuleSymbol::Trumpf {
-            suit: game.trump_suit(),
-            // Without a trump suit all trumps share one rank (Unter in Wenz, Ober in Geier).
-            rank: game
-                .sorted(game.trumps)
-                .first()
-                .map_or("T", |c| c.rank().symbol()),
-        },
+        CardSet::Trumpf => RuleSymbol::Trumpf,
         CardSet::Farbe => RuleSymbol::Suits(&game.plain_suits),
         CardSet::Ober => rank(Rank::Ober),
         CardSet::Unter => rank(Rank::Unter),
