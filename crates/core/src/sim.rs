@@ -29,6 +29,7 @@ pub struct Tally {
     pub examples: Vec<Deal>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Outcome {
     /// Deals that passed the Rufregel and `[me] where`.
     pub accepted: u64,
@@ -46,7 +47,7 @@ impl Outcome {
         }
     }
 
-    fn merge(mut self, other: Outcome, max_examples: usize) -> Outcome {
+    fn merge(&mut self, other: Outcome, max_examples: usize) {
         self.accepted += other.accepted;
         self.attempts += other.attempts;
         for (a, b) in self.tallies.iter_mut().zip(other.tallies) {
@@ -54,7 +55,6 @@ impl Outcome {
             let room = max_examples.saturating_sub(a.examples.len());
             a.examples.extend(b.examples.into_iter().take(room));
         }
-        self
     }
 
     fn record(&mut self, scn: &Scenario, deal: &Deal, max_examples: usize) {
@@ -77,20 +77,83 @@ pub fn run(
     seed: u64,
     max_examples: usize,
 ) -> Result<Outcome, SimError> {
-    let sampler = Sampler::new(scn);
-    let chunks: Vec<Result<Outcome, SimError>> = (0..iterations.div_ceil(CHUNK))
-        .into_par_iter()
-        .map(|c| {
-            let n = CHUNK.min(iterations - c * CHUNK);
-            let chunk_seed = seed ^ c.wrapping_mul(CHUNK_SEED_MIX);
-            run_chunk(scn, &sampler, n, chunk_seed, max_examples)
+    let mut run = Run::new(scn, iterations, seed, max_examples);
+    run.step(u64::MAX)?;
+    Ok(run.into_outcome())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RunState {
+    Running,
+    Finished,
+}
+
+/// A simulation advanced in steps, so front ends can show partial results and stop early.
+/// Stepping visits the same chunks with the same seeds as [`run`], so results are identical.
+pub struct Run<'s> {
+    scn: &'s Scenario,
+    sampler: Sampler,
+    iterations: u64,
+    seed: u64,
+    max_examples: usize,
+    next_chunk: u64,
+    outcome: Outcome,
+}
+
+impl<'s> Run<'s> {
+    pub fn new(scn: &'s Scenario, iterations: u64, seed: u64, max_examples: usize) -> Run<'s> {
+        Run {
+            scn,
+            sampler: Sampler::new(scn),
+            iterations,
+            seed,
+            max_examples,
+            next_chunk: 0,
+            outcome: Outcome::new(scn.queries.len()),
+        }
+    }
+
+    fn total_chunks(&self) -> u64 {
+        self.iterations.div_ceil(CHUNK)
+    }
+
+    /// Simulates up to `max_chunks` further chunks in parallel.
+    pub fn step(&mut self, max_chunks: u64) -> Result<RunState, SimError> {
+        let total = self.total_chunks();
+        let end = self.next_chunk.saturating_add(max_chunks).min(total);
+        let chunks: Vec<Result<Outcome, SimError>> = (self.next_chunk..end)
+            .into_par_iter()
+            .map(|c| {
+                let n = CHUNK.min(self.iterations - c * CHUNK);
+                let chunk_seed = self.seed ^ c.wrapping_mul(CHUNK_SEED_MIX);
+                run_chunk(self.scn, &self.sampler, n, chunk_seed, self.max_examples)
+            })
+            .collect();
+        for chunk in chunks {
+            self.outcome.merge(chunk?, self.max_examples);
+        }
+        self.next_chunk = end;
+        Ok(if end == total {
+            RunState::Finished
+        } else {
+            RunState::Running
         })
-        .collect();
-    chunks
-        .into_iter()
-        .try_fold(Outcome::new(scn.queries.len()), |acc, chunk| {
-            Ok(acc.merge(chunk?, max_examples))
-        })
+    }
+
+    pub fn fraction_done(&self) -> f64 {
+        match self.total_chunks() {
+            0 => 1.0,
+            total => self.next_chunk as f64 / total as f64,
+        }
+    }
+
+    pub fn outcome(&self) -> &Outcome {
+        &self.outcome
+    }
+
+    pub fn into_outcome(self) -> Outcome {
+        self.outcome
+    }
 }
 
 fn run_chunk(
@@ -126,4 +189,33 @@ fn draw(scn: &Scenario, sampler: &Sampler, rng: &mut Xoshiro256PlusPlus) -> Opti
         .as_ref()
         .is_none_or(|filter| Evaluator::new(&scn.game, &deal).eval(filter));
     accepted.then_some(deal)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SCENARIO: &str = r#"
+        [game]
+        type = "sauspiel"
+        called = "gras"
+
+        [[query]]
+        name = "x"
+        where = "any(p in others, p.count(trumpf) >= 4)"
+    "#;
+
+    #[test]
+    fn stepping_matches_single_run() {
+        let scn = Scenario::from_toml(SCENARIO).unwrap_or_else(|e| panic!("{e}"));
+        let (iterations, seed, examples) = (10 * CHUNK + 7, 3, 2);
+        let whole = run(&scn, iterations, seed, examples).unwrap_or_else(|e| panic!("{e}"));
+        let mut stepped = Run::new(&scn, iterations, seed, examples);
+        while stepped.step(3).unwrap_or_else(|e| panic!("{e}")) == RunState::Running {}
+        let stepped = stepped.into_outcome();
+        assert_eq!(stepped.accepted, iterations);
+        assert_eq!(stepped.attempts, whole.attempts);
+        assert_eq!(stepped.tallies[0].hits, whole.tallies[0].hits);
+        assert_eq!(stepped.tallies[0].examples, whole.tallies[0].examples);
+    }
 }

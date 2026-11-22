@@ -17,7 +17,7 @@ pub enum GameKind {
 pub const PLAYER_COUNT: usize = 4;
 
 /// Seats relative to me.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Seat {
     Me,
@@ -111,6 +111,17 @@ impl Game {
 
     pub fn suit_set(&self, suit: Suit) -> Cards {
         self.suit_sets[suit.index()]
+    }
+
+    /// Suit whose plain cards are trump; `None` in Wenz and Geier.
+    pub fn trump_suit(&self) -> Option<Suit> {
+        match self.kind {
+            GameKind::Sauspiel { .. } => Some(Suit::Herz),
+            GameKind::Solo { trump }
+            | GameKind::Farbwenz { trump }
+            | GameKind::Farbgeier { trump } => Some(trump),
+            GameKind::Wenz | GameKind::Geier => None,
+        }
     }
 
     pub fn called_sau(&self) -> Option<Card> {

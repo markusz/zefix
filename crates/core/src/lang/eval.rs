@@ -2,7 +2,7 @@ use super::ir::{BoolExpr, BoolQuant, Domain, IntExpr, MAX_VARS, PlayerRef, Quant
 use crate::cards::{Cards, Suit};
 use crate::game::{Game, PLAYER_COUNT, Seat};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Deal {
     pub hands: [Cards; PLAYER_COUNT],
     /// Holder of the called Sau (Sauspiel only).
