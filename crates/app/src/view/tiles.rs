@@ -68,12 +68,14 @@ fn hand_scale(ui: &Ui) -> f32 {
 pub fn show(ui: &mut Ui, game: &Game, edit: &mut EditState, mut row: TileRow<'_>) {
     let target = row.target;
     let scale = hand_scale(ui);
+    let fixed = cards_of(row.tiles);
     ui.horizontal_wrapped(|ui| {
         for (index, tile) in row.tiles.iter().enumerate() {
             let selection = Selection { target, index };
             let selected = edit.selected == Some(selection);
             let style = TileStyle {
                 selected,
+                fixed,
                 accent: row.accent,
                 scale,
             };
@@ -83,6 +85,7 @@ pub fn show(ui: &mut Ui, game: &Game, edit: &mut EditState, mut row: TileRow<'_>
         }
         let style = TileStyle {
             selected: false,
+            fixed,
             accent: row.accent,
             scale,
         };
@@ -103,6 +106,8 @@ pub fn show(ui: &mut Ui, game: &Game, edit: &mut EditState, mut row: TileRow<'_>
 #[derive(Clone, Copy)]
 struct TileStyle {
     selected: bool,
+    /// Fixed cards of the row; rules count on top of them.
+    fixed: Cards,
     accent: Color32,
     scale: f32,
 }
@@ -118,13 +123,30 @@ fn tile_widget(ui: &mut Ui, game: &Game, tile: Tile, style: TileStyle) -> egui::
             .on_hover_text(format!("Karte {card} · klicken zum Bearbeiten")),
         Tile::Count { set, op } => {
             let face = rule_face(game, set, op);
-            paint::rule_card(ui, &face, look, style.scale, style.accent).on_hover_text(format!(
-                "{}: {} · klicken zum Bearbeiten",
-                set.label(),
-                op.label()
+            paint::rule_card(ui, &face, look, style.scale, style.accent).on_hover_text(rule_hint(
+                game,
+                set,
+                op,
+                style.fixed,
             ))
         }
     }
+}
+
+/// "Trumpf: 2–5 weitere (neben EO, GO)" when the row already holds cards of the set.
+fn rule_hint(game: &Game, set: CardSet, op: CountOp, fixed: Cards) -> String {
+    let in_set = model::set_cards(set, game) & fixed;
+    let besides = if in_set.is_empty() {
+        String::new()
+    } else {
+        let names: Vec<String> = game.sorted(in_set).iter().map(|c| c.to_string()).collect();
+        format!(" weitere (neben {})", names.join(", "))
+    };
+    format!(
+        "{}: {}{besides} · klicken zum Bearbeiten",
+        set.label(),
+        op.label()
+    )
 }
 
 fn rule_face(game: &Game, set: CardSet, op: CountOp) -> RuleFace<'_> {
@@ -241,6 +263,7 @@ enum EditorAction {
 #[derive(Clone, Copy)]
 struct EditorCtx {
     sel: Selection,
+    fixed: Cards,
     accent: Color32,
 }
 
@@ -252,6 +275,7 @@ fn editor(ui: &mut Ui, game: &Game, edit: &mut EditState, row: &mut TileRow<'_>)
     };
     let ctx = EditorCtx {
         sel,
+        fixed: cards_of(tiles),
         accent: row.accent,
     };
     let Some(tile) = tiles.get_mut(sel.index) else {
@@ -297,7 +321,7 @@ fn count_editor(ui: &mut Ui, game: &Game, set: &mut CardSet, op: &mut CountOp, c
                 ui.selectable_value(set, option, option.label());
             }
         });
-    let cap = model::cap(*set, game);
+    let cap = model::rule_cap(*set, ctx.fixed, game);
     if *set != before {
         *op = op.clamped(cap);
     }

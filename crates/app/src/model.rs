@@ -5,7 +5,6 @@ use schafsim_core::cards::{Card, Cards, Suit};
 use schafsim_core::game::{Game, GameKind, PLAYER_COUNT, Seat};
 use schafsim_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig};
 
-pub const MAX_COUNT: u8 = HAND_SIZE as u8;
 /// Upper bound for "at least k other players".
 pub const OTHER_PLAYERS: u8 = (PLAYER_COUNT - 1) as u8;
 
@@ -178,11 +177,22 @@ impl CardSet {
     }
 }
 
-/// Most cards of `set` a hand can hold in `game`: the set's size, capped by the hand size.
-/// Sliders use it so "Ober" only offers 0–4.
-pub fn cap(set: CardSet, game: &Game) -> u8 {
-    game.named_set(set.ident())
-        .map_or(MAX_COUNT, |cards| cards.len().min(HAND_SIZE) as u8)
+pub fn set_cards(set: CardSet, game: &Game) -> Cards {
+    game.named_set(set.ident()).unwrap_or(Cards::ALL)
+}
+
+/// Fixed cards of the same hand that belong to `set`. Rules count on top of these, so
+/// "EO, GO, 2–5 Trumpf" means two to five trumps besides the two Ober.
+pub fn fixed_in(set: CardSet, fixed: Cards, game: &Game) -> u8 {
+    (set_cards(set, game) & fixed).len() as u8
+}
+
+/// Most additional cards of `set` a rule can ask for next to the `fixed` cards; sliders use it
+/// so "Ober" only offers 0–4.
+pub fn rule_cap(set: CardSet, fixed: Cards, game: &Game) -> u8 {
+    let unfixed = (set_cards(set, game) - fixed).len();
+    let open_slots = HAND_SIZE.saturating_sub(fixed.len());
+    unfixed.min(open_slots) as u8
 }
 
 /// The comparison a count tile makes; the editor's dropdown picks the kind.
@@ -292,6 +302,21 @@ impl CountOp {
         }
     }
 
+    /// The same comparison on the total count, given `fixed` cards of the set already held.
+    fn on_top_of(self, fixed: u8) -> CountOp {
+        match self {
+            CountOp::AtLeast(0) => CountOp::AtLeast(0),
+            CountOp::AtLeast(n) => CountOp::AtLeast(n + fixed),
+            CountOp::AtMost(n) => CountOp::AtMost(n + fixed),
+            CountOp::Exactly(n) => CountOp::Exactly(n + fixed),
+            CountOp::Between { min, max } => CountOp::Between {
+                min: min + fixed,
+                max: max + fixed,
+            },
+            CountOp::Zero => CountOp::Exactly(fixed),
+        }
+    }
+
     /// `None` if the comparison does not restrict anything.
     fn condition(self, subject: &str, set: &str) -> Option<String> {
         let count = format!("{subject}.count({set})");
@@ -326,17 +351,30 @@ pub fn cards_of(tiles: &[Tile]) -> Cards {
         .collect()
 }
 
+/// How a hand's fixed cards enter its condition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FixedCards {
+    /// Checked with `has(..)`.
+    Required,
+    /// My cards are dealt directly, so only the rules need checking.
+    Dealt,
+}
+
 /// All tiles of `subject` joined with `and`; `None` if nothing is constrained.
-pub fn condition(subject: &str, tiles: &[Tile]) -> Option<String> {
+pub fn condition(subject: &str, tiles: &[Tile], game: &Game, mode: FixedCards) -> Option<String> {
     let mut parts = Vec::new();
     let cards = cards_of(tiles);
-    if !cards.is_empty() {
+    if !cards.is_empty() && mode == FixedCards::Required {
         let names: Vec<String> = cards.iter().map(|c| c.to_string()).collect();
         parts.push(format!("{subject}.has({})", names.join(", ")));
     }
-    parts.extend(tiles.iter().filter_map(|t| match t {
-        Tile::Count { set, op } => op.condition(subject, set.ident()),
-        Tile::Card(_) => None,
+    parts.extend(tiles.iter().filter_map(|t| {
+        match t {
+            Tile::Count { set, op } => op
+                .on_top_of(fixed_in(*set, cards, game))
+                .condition(subject, set.ident()),
+            Tile::Card(_) => None,
+        }
     }));
     (!parts.is_empty()).then(|| parts.join(" and "))
 }
@@ -380,22 +418,22 @@ impl QueryModel {
     }
 
     /// Query-language source; `None` while the query is empty.
-    pub fn expr(&self) -> Option<String> {
+    pub fn expr(&self, game: &Game) -> Option<String> {
         match self.mode {
             QueryMode::Text => {
                 let text = self.text.trim();
                 (!text.is_empty()).then(|| text.to_string())
             }
-            QueryMode::Visual => self.visual_expr(),
+            QueryMode::Visual => self.visual_expr(game),
         }
     }
 
-    pub fn visual_expr(&self) -> Option<String> {
+    pub fn visual_expr(&self, game: &Game) -> Option<String> {
         let subject = match self.scope {
             Scope::Player(seat) => seat.name(),
             Scope::AnyOther | Scope::AllOthers | Scope::AtLeast(_) => VAR,
         };
-        let body = condition(subject, &self.tiles)?;
+        let body = condition(subject, &self.tiles, game, FixedCards::Required)?;
         Some(match self.scope {
             Scope::Player(_) => body,
             Scope::AnyOther => format!("any({VAR} in others, {body})"),
@@ -473,19 +511,19 @@ impl Model {
             .fold(Cards::EMPTY, |acc, &s| acc | cards_of(&self.seat(s).tiles))
     }
 
-    pub fn spec(&self) -> Spec {
+    pub fn spec(&self, game: &Game) -> Spec {
         Spec {
             game: self.game.kind(),
             vorhand: Position::First.seat(self.my_position),
             my_cards: cards_of(&self.seat(Seat::Me).tiles),
-            filter: self.filter(),
+            filter: self.filter(game),
             queries: self
                 .queries
                 .iter()
                 .filter_map(|q| {
                     Some(QuerySpec {
                         name: q.name.clone(),
-                        expr: q.expr()?,
+                        expr: q.expr(game)?,
                     })
                 })
                 .collect(),
@@ -493,22 +531,15 @@ impl Model {
     }
 
     /// Constraints on all seats except my fixed cards, which are dealt directly.
-    pub fn filter(&self) -> Option<String> {
+    pub fn filter(&self, game: &Game) -> Option<String> {
         let parts: Vec<String> = Seat::ALL
             .iter()
             .filter_map(|&seat| {
-                let tiles = &self.seat(seat).tiles;
-                match seat {
-                    Seat::Me => {
-                        let counts: Vec<Tile> = tiles
-                            .iter()
-                            .filter(|t| matches!(t, Tile::Count { .. }))
-                            .copied()
-                            .collect();
-                        condition(seat.name(), &counts)
-                    }
-                    _ => condition(seat.name(), tiles),
-                }
+                let mode = match seat {
+                    Seat::Me => FixedCards::Dealt,
+                    _ => FixedCards::Required,
+                };
+                condition(seat.name(), &self.seat(seat).tiles, game, mode)
             })
             .collect();
         (!parts.is_empty()).then(|| parts.join(" and "))
@@ -554,6 +585,18 @@ mod tests {
         Tile::Count { set, op }
     }
 
+    fn sauspiel() -> Game {
+        let setup = GameSetup {
+            choice: GameChoice::Sauspiel,
+            suit: Suit::Gras,
+        };
+        setup.game().unwrap_or_else(|| panic!("Sauspiel"))
+    }
+
+    fn cond(subject: &str, tiles: &[Tile]) -> Option<String> {
+        condition(subject, tiles, &sauspiel(), FixedCards::Required)
+    }
+
     #[test]
     fn positions_map_to_seats_clockwise() {
         let me = Position::Second;
@@ -568,37 +611,54 @@ mod tests {
     #[test]
     fn tiles_become_conditions() {
         let tiles = [
-            card("GO"),
-            card("SU"),
-            count(CardSet::Suit(Suit::Gras), CountOp::AtLeast(1)),
+            card("GA"),
             count(CardSet::Suit(Suit::Eichel), CountOp::AtMost(4)),
-            count(CardSet::Trumpf, CountOp::Between { min: 2, max: 4 }),
             count(CardSet::Suit(Suit::Herz), CountOp::Zero),
             count(CardSet::Ober, CountOp::AtLeast(0)),
         ];
         assert_eq!(
-            condition("left", &tiles).as_deref(),
-            Some(
-                "left.has(GO, SU) and left.count(gras) >= 1 and left.count(eichel) <= 4 \
-                 and left.count(trumpf) >= 2 and left.count(trumpf) <= 4 and left.frei(herz)"
-            )
+            cond("left", &tiles).as_deref(),
+            Some("left.has(GA) and left.count(eichel) <= 4 and left.frei(herz)")
         );
         assert_eq!(
-            condition("left", &[count(CardSet::Ober, CountOp::AtLeast(0))]),
+            cond("left", &[count(CardSet::Ober, CountOp::AtLeast(0))]),
             None
         );
     }
 
     #[test]
+    fn rules_count_on_top_of_fixed_cards() {
+        // Sauspiel: GO and SU are trumps, GA is not.
+        let tiles = [
+            card("GO"),
+            card("SU"),
+            card("GA"),
+            count(CardSet::Trumpf, CountOp::Between { min: 2, max: 4 }),
+            count(CardSet::Ober, CountOp::Zero),
+            count(CardSet::Suit(Suit::Gras), CountOp::AtLeast(1)),
+        ];
+        assert_eq!(
+            cond("left", &tiles).as_deref(),
+            Some(
+                "left.has(GO, GA, SU) and left.count(trumpf) >= 4 and left.count(trumpf) <= 6 \
+                 and left.count(ober) == 1 and left.count(gras) >= 2"
+            )
+        );
+        let fixed = cards_of(&tiles);
+        let game = sauspiel();
+        assert_eq!(fixed_in(CardSet::Trumpf, fixed, &game), 2);
+        assert_eq!(rule_cap(CardSet::Ober, fixed, &game), 3);
+        // Five open slots limit the 12 remaining trumps.
+        assert_eq!(rule_cap(CardSet::Trumpf, fixed, &game), 5);
+    }
+
+    #[test]
     fn caps_follow_the_game() {
-        let sauspiel = GameSetup {
-            choice: GameChoice::Sauspiel,
-            suit: Suit::Gras,
-        };
-        let game = sauspiel.game().unwrap_or_else(|| panic!("Sauspiel"));
-        assert_eq!(cap(CardSet::Ober, &game), 4);
-        assert_eq!(cap(CardSet::Suit(Suit::Herz), &game), 6);
-        assert_eq!(cap(CardSet::Trumpf, &game), MAX_COUNT);
+        let game = sauspiel();
+        let cap = |set| rule_cap(set, Cards::EMPTY, &game);
+        assert_eq!(cap(CardSet::Ober), 4);
+        assert_eq!(cap(CardSet::Suit(Suit::Herz)), 6);
+        assert_eq!(cap(CardSet::Trumpf), HAND_SIZE as u8);
     }
 
     #[test]
@@ -612,7 +672,7 @@ mod tests {
         assert_eq!(CountOp::AtLeast(6).clamped(4), CountOp::AtLeast(4));
         let between = count(CardSet::Ober, CountOp::Between { min: 2, max: 2 });
         assert_eq!(
-            condition("me", &[between]).as_deref(),
+            cond("me", &[between]).as_deref(),
             Some("me.count(ober) == 2")
         );
     }
@@ -620,7 +680,8 @@ mod tests {
     #[test]
     fn scopes_wrap_the_condition() {
         let tiles = vec![count(CardSet::Trumpf, CountOp::AtLeast(4))];
-        let expr = |scope| QueryModel::visual("x", scope, tiles.clone()).expr();
+        let game = sauspiel();
+        let expr = |scope| QueryModel::visual("x", scope, tiles.clone()).expr(&game);
         assert_eq!(
             expr(Scope::AnyOther).as_deref(),
             Some("any(p in others, p.count(trumpf) >= 4)")
@@ -634,7 +695,7 @@ mod tests {
             Some("across.count(trumpf) >= 4")
         );
         assert_eq!(
-            QueryModel::visual("x", Scope::AnyOther, vec![]).expr(),
+            QueryModel::visual("x", Scope::AnyOther, vec![]).expr(&game),
             None
         );
     }
@@ -648,11 +709,12 @@ mod tests {
         model.seat_mut(Seat::Me).tiles =
             vec![card("EO"), count(CardSet::Trumpf, CountOp::AtLeast(3))];
         model.seat_mut(Seat::Left).tiles = vec![count(CardSet::Suit(Suit::Herz), CountOp::Zero)];
-        let spec = model.spec();
+        let spec = model.spec(&sauspiel());
         assert_eq!(spec.vorhand, Seat::Right);
+        // EO is dealt directly but still counts towards the trump rule.
         assert_eq!(
             spec.filter.as_deref(),
-            Some("me.count(trumpf) >= 3 and left.frei(herz)")
+            Some("me.count(trumpf) >= 4 and left.frei(herz)")
         );
         let scn = Scenario::from_config(spec.to_config()).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(scn.fixed.len(), 1);

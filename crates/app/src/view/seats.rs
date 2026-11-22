@@ -47,7 +47,7 @@ pub fn show(ui: &mut Ui, model: &mut Model, edit: &mut EditState, game: &Game) {
         });
         ui.add_space(6.0);
     }
-    filter_preview(ui, model);
+    filter_preview(ui, model, game);
 }
 
 fn header(ui: &mut Ui, position: Position, seat: Seat, accent: egui::Color32) {
@@ -64,7 +64,7 @@ fn header(ui: &mut Ui, position: Position, seat: Seat, accent: egui::Color32) {
     });
 }
 
-fn filter_preview(ui: &mut Ui, model: &Model) {
+fn filter_preview(ui: &mut Ui, model: &Model, game: &Game) {
     egui::CollapsingHeader::new("Als Abfragetext")
         .id_salt("seat_filter_text")
         .show(ui, |ui| {
@@ -73,7 +73,7 @@ fn filter_preview(ui: &mut Ui, model: &Model) {
                 ui.monospace(format!("Feste Karten: [{fixed}]"));
                 ui.monospace(format!(
                     "Filter: {}",
-                    model.filter().unwrap_or_else(|| "–".into())
+                    model.filter(game).unwrap_or_else(|| "–".into())
                 ));
             });
         });

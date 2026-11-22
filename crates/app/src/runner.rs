@@ -2,7 +2,7 @@
 //! The worker steps the core `Run` in rounds, so results sharpen live and a stop takes effect
 //! within one round.
 
-use crate::model::{Model, Spec};
+use crate::model::Spec;
 use eframe::egui;
 use schafsim_core::scenario::{Scenario, ScenarioError};
 use schafsim_core::sim::{Outcome, Run, RunState};
@@ -89,12 +89,9 @@ impl Runner {
     }
 
     /// Applies worker updates and restarts if the model or settings changed.
-    pub fn sync(&mut self, model: &Model, settings: RunSettings, ctx: &egui::Context) {
+    pub fn sync(&mut self, spec: Spec, settings: RunSettings, ctx: &egui::Context) {
         self.poll();
-        let key = RunKey {
-            spec: model.spec(),
-            settings,
-        };
+        let key = RunKey { spec, settings };
         if self.key.as_ref() != Some(&key) {
             self.start(&key, ctx);
             self.key = Some(key);

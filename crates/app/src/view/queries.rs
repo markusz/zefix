@@ -77,7 +77,7 @@ fn query_frame(
     row: QueryRow<'_>,
 ) -> RowAction {
     theme::card(ui, row.accent, |ui| {
-        let action = title_bar(ui, query, row.index);
+        let action = title_bar(ui, query, game, row.index);
         match query.mode {
             QueryMode::Visual => visual(ui, query, edit, game, &row),
             QueryMode::Text => {
@@ -102,7 +102,7 @@ fn query_frame(
     })
 }
 
-fn title_bar(ui: &mut Ui, query: &mut QueryModel, index: usize) -> RowAction {
+fn title_bar(ui: &mut Ui, query: &mut QueryModel, game: &Game, index: usize) -> RowAction {
     ui.horizontal(|ui| {
         ui.add(TextEdit::singleline(&mut query.name).desired_width(NAME_WIDTH));
         let before = query.mode;
@@ -113,7 +113,7 @@ fn title_bar(ui: &mut Ui, query: &mut QueryModel, index: usize) -> RowAction {
             && query.mode == QueryMode::Text
             && query.text.trim().is_empty()
         {
-            query.text = query.visual_expr().unwrap_or_default();
+            query.text = query.visual_expr(game).unwrap_or_default();
         }
         let remove = theme::danger(ui, "Löschen")
             .on_hover_text(format!("Abfrage {} löschen", index + 1))
@@ -147,7 +147,7 @@ fn visual(
     tiles::show(ui, game, edit, tiles_row);
     theme::inset(ui, |ui| {
         ui.set_width(ui.available_width());
-        match query.visual_expr() {
+        match query.visual_expr(game) {
             Some(expr) => ui.weak(RichText::new(expr).monospace()),
             None => ui.weak("Noch leer: Karten oder eine Anzahl hinzufügen."),
         };

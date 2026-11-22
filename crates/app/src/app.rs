@@ -87,7 +87,8 @@ impl eframe::App for SchafsimApp {
             });
         });
         // After the UI so edits from this frame start a new run immediately.
-        self.runner.sync(&self.model, self.settings, ui.ctx());
+        self.runner
+            .sync(self.model.spec(&game), self.settings, ui.ctx());
     }
 }
 
@@ -213,7 +214,7 @@ mod snapshots {
                 Tile::Card(Card::new(Suit::Schellen, schafsim_core::cards::Rank::Ober)),
                 Tile::Count {
                     set: CardSet::Trumpf,
-                    op: CountOp::AtLeast(4),
+                    op: CountOp::AtLeast(3),
                 },
             ],
         ));
