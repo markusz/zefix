@@ -3,6 +3,7 @@
 ## Workspace
 - `crates/core` (`schafsim-core`): game rules, query language, simulation, statistics. No I/O, no output formatting.
 - `crates/cli` (`schafsim-cli`, binary `schafsim`): argument parsing and rendering only; all logic lives in core.
+- `crates/app` (`schafsim-app`): egui desktop UI. The visual model compiles to query-language text, so UI and TOML share one semantics. `cargo test -p schafsim-app -- --ignored` renders screenshots to `target/ui-snapshots/` (needs a GPU).
 
 ## Rust
 - Idiomatic Rust. No code that can panic in production paths: no `unwrap`, `expect`, `panic!`. Indexing only on fixed-size arrays with indices derived from enums or bounded by construction.

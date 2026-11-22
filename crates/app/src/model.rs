@@ -1,0 +1,660 @@
+//! The scenario as the UI edits it: tiles per seat and per query. Compiles to a core
+//! `Config` via query-language text, so the UI and the TOML files share one semantics.
+
+use schafsim_core::cards::{Card, Cards, Suit};
+use schafsim_core::game::{Game, GameKind, PLAYER_COUNT, Seat};
+use schafsim_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig};
+
+pub const MAX_COUNT: u8 = HAND_SIZE as u8;
+/// Upper bound for "at least k other players".
+pub const OTHER_PLAYERS: u8 = (PLAYER_COUNT - 1) as u8;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GameChoice {
+    Sauspiel,
+    Solo,
+    Wenz,
+    Farbwenz,
+    Geier,
+    Farbgeier,
+}
+
+impl GameChoice {
+    pub const ALL: [GameChoice; 6] = [
+        GameChoice::Sauspiel,
+        GameChoice::Solo,
+        GameChoice::Wenz,
+        GameChoice::Farbwenz,
+        GameChoice::Geier,
+        GameChoice::Farbgeier,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            GameChoice::Sauspiel => "Sauspiel",
+            GameChoice::Solo => "Solo",
+            GameChoice::Wenz => "Wenz",
+            GameChoice::Farbwenz => "Farbwenz",
+            GameChoice::Geier => "Geier",
+            GameChoice::Farbgeier => "Farbgeier",
+        }
+    }
+
+    /// Suits the player may pick; empty if the game has none.
+    pub fn suits(self) -> &'static [Suit] {
+        const CALLABLE: [Suit; 3] = [Suit::Eichel, Suit::Gras, Suit::Schellen];
+        match self {
+            GameChoice::Sauspiel => &CALLABLE,
+            GameChoice::Solo | GameChoice::Farbwenz | GameChoice::Farbgeier => &Suit::ALL,
+            GameChoice::Wenz | GameChoice::Geier => &[],
+        }
+    }
+
+    pub fn suit_label(self) -> &'static str {
+        match self {
+            GameChoice::Sauspiel => "Gerufene Sau",
+            _ => "Trumpf",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GameSetup {
+    pub choice: GameChoice,
+    pub suit: Suit,
+}
+
+impl GameSetup {
+    pub fn kind(self) -> GameKind {
+        let suit = self.suit;
+        match self.choice {
+            GameChoice::Sauspiel => GameKind::Sauspiel { called: suit },
+            GameChoice::Solo => GameKind::Solo { trump: suit },
+            GameChoice::Wenz => GameKind::Wenz,
+            GameChoice::Farbwenz => GameKind::Farbwenz { trump: suit },
+            GameChoice::Geier => GameKind::Geier,
+            GameChoice::Farbgeier => GameKind::Farbgeier { trump: suit },
+        }
+    }
+
+    /// Keeps the suit valid after the game type changed (e.g. no Herz-Sau to call).
+    pub fn normalize(&mut self) {
+        let suits = self.choice.suits();
+        if let Some(&first) = suits.first()
+            && !suits.contains(&self.suit)
+        {
+            self.suit = first;
+        }
+    }
+
+    pub fn game(self) -> Option<Game> {
+        Game::new(self.kind()).ok()
+    }
+}
+
+/// Position in play order; the first position is Vorhand.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Position {
+    First,
+    Second,
+    Third,
+    Fourth,
+}
+
+impl Position {
+    pub const ALL: [Position; PLAYER_COUNT] = [
+        Position::First,
+        Position::Second,
+        Position::Third,
+        Position::Fourth,
+    ];
+
+    pub fn number(self) -> usize {
+        self as usize + 1
+    }
+
+    /// Play runs clockwise, so the player after me sits on my left.
+    pub fn seat(self, me: Position) -> Seat {
+        Seat::ALL[(self as usize + PLAYER_COUNT - me as usize) % PLAYER_COUNT]
+    }
+
+    pub fn of_seat(seat: Seat, me: Position) -> Position {
+        Position::ALL[(seat.index() + me as usize) % PLAYER_COUNT]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CardSet {
+    Trumpf,
+    Farbe,
+    Ober,
+    Unter,
+    Sau,
+    Zehn,
+    Koenig,
+    Suit(Suit),
+}
+
+impl CardSet {
+    pub const ALL: [CardSet; 11] = [
+        CardSet::Trumpf,
+        CardSet::Farbe,
+        CardSet::Ober,
+        CardSet::Unter,
+        CardSet::Sau,
+        CardSet::Zehn,
+        CardSet::Koenig,
+        CardSet::Suit(Suit::Eichel),
+        CardSet::Suit(Suit::Gras),
+        CardSet::Suit(Suit::Herz),
+        CardSet::Suit(Suit::Schellen),
+    ];
+
+    /// Name in the query language.
+    pub fn ident(self) -> &'static str {
+        match self {
+            CardSet::Trumpf => "trumpf",
+            CardSet::Farbe => "farbe",
+            CardSet::Ober => "ober",
+            CardSet::Unter => "unter",
+            CardSet::Sau => "sau",
+            CardSet::Zehn => "zehn",
+            CardSet::Koenig => "koenig",
+            CardSet::Suit(s) => s.name(),
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            CardSet::Trumpf => "Trumpf",
+            CardSet::Farbe => "Farbe",
+            CardSet::Ober => "Ober",
+            CardSet::Unter => "Unter",
+            CardSet::Sau => "Sau",
+            CardSet::Zehn => "Zehner",
+            CardSet::Koenig => "König",
+            CardSet::Suit(s) => s.display_name(),
+        }
+    }
+}
+
+/// Most cards of `set` a hand can hold in `game`: the set's size, capped by the hand size.
+/// Sliders use it so "Ober" only offers 0–4.
+pub fn cap(set: CardSet, game: &Game) -> u8 {
+    game.named_set(set.ident())
+        .map_or(MAX_COUNT, |cards| cards.len().min(HAND_SIZE) as u8)
+}
+
+/// The comparison a count tile makes; the editor's dropdown picks the kind.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CountOp {
+    AtLeast(u8),
+    AtMost(u8),
+    Exactly(u8),
+    Between { min: u8, max: u8 },
+    Zero,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CountKind {
+    AtLeast,
+    AtMost,
+    Exactly,
+    Between,
+    Zero,
+}
+
+impl CountKind {
+    pub const ALL: [CountKind; 5] = [
+        CountKind::AtLeast,
+        CountKind::AtMost,
+        CountKind::Exactly,
+        CountKind::Between,
+        CountKind::Zero,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            CountKind::AtLeast => "mindestens",
+            CountKind::AtMost => "höchstens",
+            CountKind::Exactly => "genau",
+            CountKind::Between => "zwischen",
+            CountKind::Zero => "keine",
+        }
+    }
+}
+
+impl CountOp {
+    pub const AT_LEAST_ONE: CountOp = CountOp::AtLeast(1);
+
+    pub fn kind(self) -> CountKind {
+        match self {
+            CountOp::AtLeast(_) => CountKind::AtLeast,
+            CountOp::AtMost(_) => CountKind::AtMost,
+            CountOp::Exactly(_) => CountKind::Exactly,
+            CountOp::Between { .. } => CountKind::Between,
+            CountOp::Zero => CountKind::Zero,
+        }
+    }
+
+    /// The number the user last chose, carried over when the kind changes.
+    fn value(self) -> u8 {
+        match self {
+            CountOp::AtLeast(n) | CountOp::AtMost(n) | CountOp::Exactly(n) => n,
+            CountOp::Between { min, .. } => min,
+            CountOp::Zero => 0,
+        }
+    }
+
+    pub fn with_kind(self, kind: CountKind, cap: u8) -> CountOp {
+        let v = self.value().min(cap);
+        match kind {
+            CountKind::AtLeast => CountOp::AtLeast(v.max(1)),
+            CountKind::AtMost => CountOp::AtMost(v),
+            CountKind::Exactly => CountOp::Exactly(v),
+            CountKind::Between => CountOp::Between { min: v, max: cap },
+            CountKind::Zero => CountOp::Zero,
+        }
+    }
+
+    /// Keeps values within `0..=cap`, e.g. after switching the set from Trumpf to Ober.
+    pub fn clamped(self, cap: u8) -> CountOp {
+        match self {
+            CountOp::AtLeast(n) => CountOp::AtLeast(n.min(cap)),
+            CountOp::AtMost(n) => CountOp::AtMost(n.min(cap)),
+            CountOp::Exactly(n) => CountOp::Exactly(n.min(cap)),
+            CountOp::Between { min, max } => CountOp::Between {
+                min: min.min(cap),
+                max: max.min(cap),
+            },
+            CountOp::Zero => CountOp::Zero,
+        }
+    }
+
+    pub fn label(self) -> String {
+        match self {
+            CountOp::AtLeast(n) => format!("mind. {n}"),
+            CountOp::AtMost(n) => format!("höchstens {n}"),
+            CountOp::Exactly(n) => format!("genau {n}"),
+            CountOp::Between { min, max } => format!("{min}–{max}"),
+            CountOp::Zero => "keine".into(),
+        }
+    }
+
+    /// Short form for the badge on a rule card.
+    pub fn badge(self) -> String {
+        match self {
+            CountOp::AtLeast(n) => format!("{n}+"),
+            CountOp::AtMost(n) => format!("≤{n}"),
+            CountOp::Exactly(n) => n.to_string(),
+            CountOp::Between { min, max } => format!("{min}–{max}"),
+            CountOp::Zero => "0".into(),
+        }
+    }
+
+    /// `None` if the comparison does not restrict anything.
+    fn condition(self, subject: &str, set: &str) -> Option<String> {
+        let count = format!("{subject}.count({set})");
+        match self {
+            CountOp::AtLeast(0) => None,
+            CountOp::AtLeast(n) => Some(format!("{count} >= {n}")),
+            CountOp::AtMost(n) => Some(format!("{count} <= {n}")),
+            CountOp::Exactly(0) | CountOp::Zero => Some(format!("{subject}.frei({set})")),
+            CountOp::Exactly(n) => Some(format!("{count} == {n}")),
+            CountOp::Between { min, max } if min == max => {
+                CountOp::Exactly(min).condition(subject, set)
+            }
+            CountOp::Between { min: 0, max } => CountOp::AtMost(max).condition(subject, set),
+            CountOp::Between { min, max } => Some(format!("{count} >= {min} and {count} <= {max}")),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Tile {
+    Card(Card),
+    Count { set: CardSet, op: CountOp },
+}
+
+pub fn cards_of(tiles: &[Tile]) -> Cards {
+    tiles
+        .iter()
+        .filter_map(|t| match t {
+            Tile::Card(c) => Some(*c),
+            Tile::Count { .. } => None,
+        })
+        .collect()
+}
+
+/// All tiles of `subject` joined with `and`; `None` if nothing is constrained.
+pub fn condition(subject: &str, tiles: &[Tile]) -> Option<String> {
+    let mut parts = Vec::new();
+    let cards = cards_of(tiles);
+    if !cards.is_empty() {
+        let names: Vec<String> = cards.iter().map(|c| c.to_string()).collect();
+        parts.push(format!("{subject}.has({})", names.join(", ")));
+    }
+    parts.extend(tiles.iter().filter_map(|t| match t {
+        Tile::Count { set, op } => op.condition(subject, set.ident()),
+        Tile::Card(_) => None,
+    }));
+    (!parts.is_empty()).then(|| parts.join(" and "))
+}
+
+/// Who a visual query talks about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scope {
+    Player(Seat),
+    AnyOther,
+    AllOthers,
+    AtLeast(u8),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QueryMode {
+    Visual,
+    Text,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct QueryModel {
+    pub name: String,
+    pub mode: QueryMode,
+    pub scope: Scope,
+    pub tiles: Vec<Tile>,
+    pub text: String,
+}
+
+/// Bound variable in generated quantifiers.
+const VAR: &str = "p";
+
+impl QueryModel {
+    pub fn visual(name: &str, scope: Scope, tiles: Vec<Tile>) -> QueryModel {
+        QueryModel {
+            name: name.into(),
+            mode: QueryMode::Visual,
+            scope,
+            tiles,
+            text: String::new(),
+        }
+    }
+
+    /// Query-language source; `None` while the query is empty.
+    pub fn expr(&self) -> Option<String> {
+        match self.mode {
+            QueryMode::Text => {
+                let text = self.text.trim();
+                (!text.is_empty()).then(|| text.to_string())
+            }
+            QueryMode::Visual => self.visual_expr(),
+        }
+    }
+
+    pub fn visual_expr(&self) -> Option<String> {
+        let subject = match self.scope {
+            Scope::Player(seat) => seat.name(),
+            Scope::AnyOther | Scope::AllOthers | Scope::AtLeast(_) => VAR,
+        };
+        let body = condition(subject, &self.tiles)?;
+        Some(match self.scope {
+            Scope::Player(_) => body,
+            Scope::AnyOther => format!("any({VAR} in others, {body})"),
+            Scope::AllOthers => format!("all({VAR} in others, {body})"),
+            Scope::AtLeast(k) => format!("num({VAR} in others, {body}) >= {k}"),
+        })
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SeatModel {
+    pub tiles: Vec<Tile>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Model {
+    pub game: GameSetup,
+    pub my_position: Position,
+    /// Indexed by `Seat::index`, so my hand stays mine when I change position.
+    pub seats: [SeatModel; PLAYER_COUNT],
+    pub queries: Vec<QueryModel>,
+}
+
+impl Default for Model {
+    fn default() -> Model {
+        Model {
+            game: GameSetup {
+                choice: GameChoice::Sauspiel,
+                suit: Suit::Gras,
+            },
+            my_position: Position::First,
+            seats: Default::default(),
+            queries: vec![QueryModel::visual(
+                "Ein Gegner hat ≥ 4 Trumpf",
+                Scope::AnyOther,
+                vec![Tile::Count {
+                    set: CardSet::Trumpf,
+                    op: CountOp::AtLeast(4),
+                }],
+            )],
+        }
+    }
+}
+
+/// Everything a simulation run depends on; a change means the results are stale.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Spec {
+    pub game: GameKind,
+    pub vorhand: Seat,
+    pub my_cards: Cards,
+    pub filter: Option<String>,
+    pub queries: Vec<QuerySpec>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QuerySpec {
+    pub name: String,
+    pub expr: String,
+}
+
+impl Model {
+    pub fn seat(&self, seat: Seat) -> &SeatModel {
+        &self.seats[seat.index()]
+    }
+
+    pub fn seat_mut(&mut self, seat: Seat) -> &mut SeatModel {
+        &mut self.seats[seat.index()]
+    }
+
+    /// Cards pinned to any seat other than `seat`.
+    pub fn cards_elsewhere(&self, seat: Seat) -> Cards {
+        Seat::ALL
+            .iter()
+            .filter(|&&s| s != seat)
+            .fold(Cards::EMPTY, |acc, &s| acc | cards_of(&self.seat(s).tiles))
+    }
+
+    pub fn spec(&self) -> Spec {
+        Spec {
+            game: self.game.kind(),
+            vorhand: Position::First.seat(self.my_position),
+            my_cards: cards_of(&self.seat(Seat::Me).tiles),
+            filter: self.filter(),
+            queries: self
+                .queries
+                .iter()
+                .filter_map(|q| {
+                    Some(QuerySpec {
+                        name: q.name.clone(),
+                        expr: q.expr()?,
+                    })
+                })
+                .collect(),
+        }
+    }
+
+    /// Constraints on all seats except my fixed cards, which are dealt directly.
+    pub fn filter(&self) -> Option<String> {
+        let parts: Vec<String> = Seat::ALL
+            .iter()
+            .filter_map(|&seat| {
+                let tiles = &self.seat(seat).tiles;
+                match seat {
+                    Seat::Me => {
+                        let counts: Vec<Tile> = tiles
+                            .iter()
+                            .filter(|t| matches!(t, Tile::Count { .. }))
+                            .copied()
+                            .collect();
+                        condition(seat.name(), &counts)
+                    }
+                    _ => condition(seat.name(), tiles),
+                }
+            })
+            .collect();
+        (!parts.is_empty()).then(|| parts.join(" and "))
+    }
+}
+
+impl Spec {
+    pub fn to_config(&self) -> Config {
+        Config {
+            iterations: None,
+            seed: None,
+            game: self.game,
+            table: Some(TableConfig {
+                vorhand: self.vorhand,
+            }),
+            me: MeConfig {
+                cards: self.my_cards.iter().map(|c| c.to_string()).collect(),
+                slots: Vec::new(),
+                filter: self.filter.clone(),
+            },
+            queries: self
+                .queries
+                .iter()
+                .map(|q| QueryConfig {
+                    name: q.name.clone(),
+                    expr: q.expr.clone(),
+                })
+                .collect(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use schafsim_core::scenario::Scenario;
+
+    fn card(s: &str) -> Tile {
+        Tile::Card(Card::parse(s).unwrap_or_else(|| panic!("{s}")))
+    }
+
+    fn count(set: CardSet, op: CountOp) -> Tile {
+        Tile::Count { set, op }
+    }
+
+    #[test]
+    fn positions_map_to_seats_clockwise() {
+        let me = Position::Second;
+        assert_eq!(Position::First.seat(me), Seat::Right);
+        assert_eq!(Position::Third.seat(me), Seat::Left);
+        assert_eq!(Position::Fourth.seat(me), Seat::Across);
+        for p in Position::ALL {
+            assert_eq!(Position::of_seat(p.seat(me), me), p);
+        }
+    }
+
+    #[test]
+    fn tiles_become_conditions() {
+        let tiles = [
+            card("GO"),
+            card("SU"),
+            count(CardSet::Suit(Suit::Gras), CountOp::AtLeast(1)),
+            count(CardSet::Suit(Suit::Eichel), CountOp::AtMost(4)),
+            count(CardSet::Trumpf, CountOp::Between { min: 2, max: 4 }),
+            count(CardSet::Suit(Suit::Herz), CountOp::Zero),
+            count(CardSet::Ober, CountOp::AtLeast(0)),
+        ];
+        assert_eq!(
+            condition("left", &tiles).as_deref(),
+            Some(
+                "left.has(GO, SU) and left.count(gras) >= 1 and left.count(eichel) <= 4 \
+                 and left.count(trumpf) >= 2 and left.count(trumpf) <= 4 and left.frei(herz)"
+            )
+        );
+        assert_eq!(
+            condition("left", &[count(CardSet::Ober, CountOp::AtLeast(0))]),
+            None
+        );
+    }
+
+    #[test]
+    fn caps_follow_the_game() {
+        let sauspiel = GameSetup {
+            choice: GameChoice::Sauspiel,
+            suit: Suit::Gras,
+        };
+        let game = sauspiel.game().unwrap_or_else(|| panic!("Sauspiel"));
+        assert_eq!(cap(CardSet::Ober, &game), 4);
+        assert_eq!(cap(CardSet::Suit(Suit::Herz), &game), 6);
+        assert_eq!(cap(CardSet::Trumpf, &game), MAX_COUNT);
+    }
+
+    #[test]
+    fn switching_kind_keeps_the_value() {
+        let op = CountOp::Exactly(3);
+        assert_eq!(op.with_kind(CountKind::AtLeast, 4), CountOp::AtLeast(3));
+        assert_eq!(
+            op.with_kind(CountKind::Between, 4),
+            CountOp::Between { min: 3, max: 4 }
+        );
+        assert_eq!(CountOp::AtLeast(6).clamped(4), CountOp::AtLeast(4));
+        let between = count(CardSet::Ober, CountOp::Between { min: 2, max: 2 });
+        assert_eq!(
+            condition("me", &[between]).as_deref(),
+            Some("me.count(ober) == 2")
+        );
+    }
+
+    #[test]
+    fn scopes_wrap_the_condition() {
+        let tiles = vec![count(CardSet::Trumpf, CountOp::AtLeast(4))];
+        let expr = |scope| QueryModel::visual("x", scope, tiles.clone()).expr();
+        assert_eq!(
+            expr(Scope::AnyOther).as_deref(),
+            Some("any(p in others, p.count(trumpf) >= 4)")
+        );
+        assert_eq!(
+            expr(Scope::AtLeast(2)).as_deref(),
+            Some("num(p in others, p.count(trumpf) >= 4) >= 2")
+        );
+        assert_eq!(
+            expr(Scope::Player(Seat::Across)).as_deref(),
+            Some("across.count(trumpf) >= 4")
+        );
+        assert_eq!(
+            QueryModel::visual("x", Scope::AnyOther, vec![]).expr(),
+            None
+        );
+    }
+
+    #[test]
+    fn spec_compiles_and_deals_my_cards_directly() {
+        let mut model = Model {
+            my_position: Position::Second,
+            ..Model::default()
+        };
+        model.seat_mut(Seat::Me).tiles =
+            vec![card("EO"), count(CardSet::Trumpf, CountOp::AtLeast(3))];
+        model.seat_mut(Seat::Left).tiles = vec![count(CardSet::Suit(Suit::Herz), CountOp::Zero)];
+        let spec = model.spec();
+        assert_eq!(spec.vorhand, Seat::Right);
+        assert_eq!(
+            spec.filter.as_deref(),
+            Some("me.count(trumpf) >= 3 and left.frei(herz)")
+        );
+        let scn = Scenario::from_config(spec.to_config()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(scn.fixed.len(), 1);
+    }
+}

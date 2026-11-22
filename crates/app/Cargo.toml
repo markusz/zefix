@@ -1,0 +1,16 @@
+[package]
+name = "schafsim-app"
+description = "Desktop front end for schafsim-core"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "schafsim-app"
+path = "src/main.rs"
+
+[dependencies]
+eframe.workspace = true
+schafsim-core.workspace = true
+
+[dev-dependencies]
+egui_kittest = { version = "0.37.0", features = ["snapshot", "wgpu", "eframe"] }

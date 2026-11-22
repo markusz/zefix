@@ -22,8 +22,9 @@ Akzeptanz 57,14 % (17.502.225 Versuche)
 |---|---|
 | `crates/core` (`schafsim-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
 | `crates/cli` (`schafsim-cli`) | Kommandozeile `schafsim` |
+| `crates/app` (`schafsim-app`) | Desktop-Oberfläche: Bedingungen und Abfragen per Baustein, Ergebnisse live |
 
-Installieren: `cargo install --path crates/cli`
+Installieren: `cargo install --path crates/cli` · Oberfläche starten: `cargo run --release -p schafsim-app`
 
 ## CLI
 
