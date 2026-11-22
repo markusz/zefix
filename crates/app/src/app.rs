@@ -30,6 +30,7 @@ pub struct SchafsimApp {
 impl SchafsimApp {
     pub fn new(ctx: &egui::Context) -> SchafsimApp {
         theme::install(ctx);
+        egui_extras::install_image_loaders(ctx);
         SchafsimApp {
             model: Model::default(),
             settings: RunSettings {

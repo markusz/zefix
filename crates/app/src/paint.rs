@@ -1,8 +1,9 @@
-//! Card faces and suit symbols, drawn with egui shapes so no image assets are needed.
+//! Card faces and suit symbols. Suits are the public-domain Bavarian SVGs in `assets/suits`,
+//! rasterized by egui_extras at the size they are drawn; everything else is egui shapes.
 
 use eframe::egui::{
-    self, Align2, Color32, FontId, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind,
-    Ui, Vec2, vec2,
+    self, Align2, Color32, FontId, ImageSource, Painter, Pos2, Rect, Response, Sense, Shape,
+    Stroke, StrokeKind, Ui, Vec2, load::TexturePoll, pos2, vec2,
 };
 use schafsim_core::cards::{Card, Suit};
 use std::f32::consts::{FRAC_PI_2, PI};
@@ -10,17 +11,9 @@ use std::f32::consts::{FRAC_PI_2, PI};
 pub const CARD_SIZE: Vec2 = vec2(34.0, 48.0);
 const CARD_FACE: Color32 = Color32::from_rgb(250, 248, 240);
 const CARD_INK: Color32 = Color32::from_rgb(40, 40, 40);
+const STRIKE: Color32 = Color32::from_rgb(198, 40, 40);
 const CORNER_RADIUS: f32 = 4.0;
-
-const EICHEL_CAP: Color32 = Color32::from_rgb(110, 76, 47);
-const EICHEL_NUT: Color32 = Color32::from_rgb(200, 160, 64);
-const GRAS: Color32 = Color32::from_rgb(46, 125, 50);
-const GRAS_RIB: Color32 = Color32::from_rgb(27, 80, 30);
-const HERZ: Color32 = Color32::from_rgb(198, 40, 40);
-const SCHELLEN: Color32 = Color32::from_rgb(230, 170, 20);
-const SCHELLEN_DARK: Color32 = Color32::from_rgb(120, 70, 20);
-/// Polygon resolution for curved outlines.
-const CURVE_STEPS: usize = 16;
+const FULL_UV: Rect = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardLook {
@@ -30,76 +23,27 @@ pub enum CardLook {
     Unavailable,
 }
 
-/// Draws a suit symbol roughly filling a circle of `radius` around `center`.
-pub fn paint_suit(painter: &Painter, center: Pos2, radius: f32, suit: Suit) {
+fn suit_image(suit: Suit) -> ImageSource<'static> {
     match suit {
-        Suit::Eichel => eichel(painter, center, radius),
-        Suit::Gras => gras(painter, center, radius),
-        Suit::Herz => herz(painter, center, radius),
-        Suit::Schellen => schellen(painter, center, radius),
+        Suit::Eichel => egui::include_image!("../assets/suits/eichel.svg"),
+        Suit::Gras => egui::include_image!("../assets/suits/gras.svg"),
+        Suit::Herz => egui::include_image!("../assets/suits/herz.svg"),
+        Suit::Schellen => egui::include_image!("../assets/suits/schellen.svg"),
     }
 }
 
-fn eichel(p: &Painter, c: Pos2, r: f32) {
-    p.add(Shape::ellipse_filled(
-        c + vec2(0.0, 0.25 * r),
-        vec2(0.48 * r, 0.68 * r),
-        EICHEL_NUT,
-    ));
-    // Cap: upper half of an ellipse, overlapping the nut.
-    let cap_center = c + vec2(0.0, -0.15 * r);
-    let cap: Vec<Pos2> = (0..=CURVE_STEPS)
-        .map(|i| {
-            let a = PI + PI * i as f32 / CURVE_STEPS as f32;
-            cap_center + vec2(0.62 * r * a.cos(), 0.45 * r * a.sin())
-        })
-        .collect();
-    p.add(Shape::convex_polygon(cap, EICHEL_CAP, Stroke::NONE));
-    p.line_segment(
-        [c + vec2(0.0, -0.55 * r), c + vec2(0.12 * r, -0.92 * r)],
-        Stroke::new(0.12 * r, EICHEL_CAP),
-    );
-}
-
-fn gras(p: &Painter, c: Pos2, r: f32) {
-    // Leaf outline: width follows a cosine, which keeps the polygon convex.
-    let point = |i: usize, side: f32| {
-        let y = -1.0 + 2.0 * i as f32 / CURVE_STEPS as f32;
-        c + vec2(side * 0.6 * r * (y * FRAC_PI_2).cos(), 0.9 * r * y)
+/// Draws a suit symbol fitted, aspect kept, into the square of half-side `radius` at `center`.
+/// Until the texture is ready (first frame) nothing is drawn; egui repaints once it is.
+pub fn paint_suit(painter: &Painter, center: Pos2, radius: f32, suit: Suit) {
+    let bounds = Vec2::splat(2.0 * radius);
+    let image = egui::Image::new(suit_image(suit)).fit_to_exact_size(bounds);
+    let Ok(TexturePoll::Ready { texture }) = image.load_for_size(painter.ctx(), bounds) else {
+        return;
     };
-    let mut outline: Vec<Pos2> = (0..=CURVE_STEPS).map(|i| point(i, 1.0)).collect();
-    outline.extend((1..CURVE_STEPS).rev().map(|i| point(i, -1.0)));
-    p.add(Shape::convex_polygon(outline, GRAS, Stroke::NONE));
-    p.line_segment(
-        [c + vec2(0.0, -0.6 * r), c + vec2(0.0, 1.1 * r)],
-        Stroke::new(0.1 * r, GRAS_RIB),
-    );
-}
-
-fn herz(p: &Painter, c: Pos2, r: f32) {
-    p.circle_filled(c + vec2(-0.45 * r, -0.25 * r), 0.5 * r, HERZ);
-    p.circle_filled(c + vec2(0.45 * r, -0.25 * r), 0.5 * r, HERZ);
-    p.add(Shape::convex_polygon(
-        vec![
-            c + vec2(-0.9 * r, -0.08 * r),
-            c + vec2(0.9 * r, -0.08 * r),
-            c + vec2(0.0, 0.95 * r),
-        ],
-        HERZ,
-        Stroke::NONE,
-    ));
-}
-
-fn schellen(p: &Painter, c: Pos2, r: f32) {
-    let body = 0.8 * r;
-    p.circle_filled(c, body, SCHELLEN);
-    p.circle_stroke(c, body, Stroke::new(0.08 * r, SCHELLEN_DARK));
-    p.line_segment(
-        [c + vec2(-0.75 * r, 0.0), c + vec2(0.75 * r, 0.0)],
-        Stroke::new(0.14 * r, SCHELLEN_DARK),
-    );
-    p.circle_filled(c + vec2(0.0, 0.42 * r), 0.13 * r, SCHELLEN_DARK);
-    p.circle_filled(c + vec2(0.0, -0.92 * r), 0.12 * r, SCHELLEN_DARK);
+    let native = texture.size;
+    let fit = (bounds.x / native.x).min(bounds.y / native.y);
+    let rect = Rect::from_center_size(center, native * fit);
+    painter.image(texture.id, rect, FULL_UV, Color32::WHITE);
 }
 
 /// A clickable card face; `scale` 1.0 is `CARD_SIZE`.
@@ -309,7 +253,7 @@ fn paint_rule_symbol(painter: &Painter, rect: Rect, face: &RuleFace<'_>) {
     if face.negation == Negation::Struck {
         let center = at(0.36);
         let d = vec2(w * 0.4, h * 0.26);
-        painter.line_segment([center - d, center + d], Stroke::new(2.5, HERZ));
+        painter.line_segment([center - d, center + d], Stroke::new(2.5, STRIKE));
     }
 }
 

@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 eframe.workspace = true
+egui_extras.workspace = true
 schafsim-core.workspace = true
 
 [dev-dependencies]
