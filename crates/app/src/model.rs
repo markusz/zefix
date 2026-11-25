@@ -383,9 +383,14 @@ pub fn condition(subject: &str, tiles: &[Tile], game: &Game, mode: FixedCards) -
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Scope {
     Player(Seat),
+    /// Sauspiel only: whoever holds the called Sau.
+    Partner,
     AnyOther,
     AllOthers,
     AtLeast(u8),
+    /// Sauspiel only: the two players who are not my partner.
+    AnyOpponent,
+    AllOpponents,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -405,6 +410,7 @@ pub struct QueryModel {
 
 /// Bound variable in generated quantifiers.
 const VAR: &str = "p";
+const PARTNER: &str = "partner";
 
 impl QueryModel {
     pub fn visual(name: &str, scope: Scope, tiles: Vec<Tile>) -> QueryModel {
@@ -431,13 +437,20 @@ impl QueryModel {
     pub fn visual_expr(&self, game: &Game) -> Option<String> {
         let subject = match self.scope {
             Scope::Player(seat) => seat.name(),
-            Scope::AnyOther | Scope::AllOthers | Scope::AtLeast(_) => VAR,
+            Scope::Partner => PARTNER,
+            Scope::AnyOther
+            | Scope::AllOthers
+            | Scope::AtLeast(_)
+            | Scope::AnyOpponent
+            | Scope::AllOpponents => VAR,
         };
         let body = condition(subject, &self.tiles, game, FixedCards::Required)?;
         Some(match self.scope {
-            Scope::Player(_) => body,
+            Scope::Player(_) | Scope::Partner => body,
             Scope::AnyOther => format!("any({VAR} in others, {body})"),
             Scope::AllOthers => format!("all({VAR} in others, {body})"),
+            Scope::AnyOpponent => format!("any({VAR} in opponents, {body})"),
+            Scope::AllOpponents => format!("all({VAR} in opponents, {body})"),
             Scope::AtLeast(k) => format!("num({VAR} in others, {body}) >= {k}"),
         })
     }
@@ -468,7 +481,7 @@ impl Default for Model {
             seats: Default::default(),
             queries: vec![QueryModel::visual(
                 "Ein Gegner hat ≥ 4 Trumpf",
-                Scope::AnyOther,
+                Scope::AnyOpponent,
                 vec![Tile::Count {
                     set: CardSet::Trumpf,
                     op: CountOp::AtLeast(4),
@@ -695,6 +708,14 @@ mod tests {
             Some("across.count(trumpf) >= 4")
         );
         assert_eq!(
+            expr(Scope::Partner).as_deref(),
+            Some("partner.count(trumpf) >= 4")
+        );
+        assert_eq!(
+            expr(Scope::AllOpponents).as_deref(),
+            Some("all(p in opponents, p.count(trumpf) >= 4)")
+        );
+        assert_eq!(
             QueryModel::visual("x", Scope::AnyOther, vec![]).expr(&game),
             None
         );
@@ -709,6 +730,12 @@ mod tests {
         model.seat_mut(Seat::Me).tiles =
             vec![card("EO"), count(CardSet::Trumpf, CountOp::AtLeast(3))];
         model.seat_mut(Seat::Left).tiles = vec![count(CardSet::Suit(Suit::Herz), CountOp::Zero)];
+        let trumps = vec![count(CardSet::Trumpf, CountOp::AtLeast(3))];
+        for scope in [Scope::Partner, Scope::AllOpponents] {
+            model
+                .queries
+                .push(QueryModel::visual("x", scope, trumps.clone()));
+        }
         let spec = model.spec(&sauspiel());
         assert_eq!(spec.vorhand, Seat::Right);
         // EO is dealt directly but still counts towards the trump rule.

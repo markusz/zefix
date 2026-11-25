@@ -136,7 +136,7 @@ fn visual(
 ) {
     ui.horizontal(|ui| {
         ui.label("Wer:");
-        scope_picker(ui, &mut query.scope, row);
+        scope_picker(ui, &mut query.scope, game, row);
     });
     let tiles_row = TileRow {
         target: Target::Query(row.index),
@@ -157,16 +157,36 @@ fn visual(
 fn scope_label(scope: Scope, me: Position) -> String {
     match scope {
         Scope::Player(seat) => position_label(Position::of_seat(seat, me), me),
+        Scope::Partner => "mein Mitspieler".into(),
+        Scope::AnyOpponent => "irgendein Gegner".into(),
+        Scope::AllOpponents => "beide Gegner".into(),
         Scope::AnyOther => "irgendein anderer Spieler".into(),
         Scope::AllOthers => "alle anderen Spieler".into(),
         Scope::AtLeast(k) => format!("mindestens {k} andere Spieler"),
     }
 }
 
-fn scope_picker(ui: &mut Ui, scope: &mut Scope, row: &QueryRow<'_>) {
+/// Partner and opponents only exist in a Sauspiel; elsewhere all others are opponents.
+const SAUSPIEL_SCOPES: [Scope; 3] = [Scope::Partner, Scope::AnyOpponent, Scope::AllOpponents];
+const GROUP_SCOPES: [Scope; 3] = [Scope::AnyOther, Scope::AllOthers, Scope::AtLeast(2)];
+
+fn scope_picker(ui: &mut Ui, scope: &mut Scope, game: &Game, row: &QueryRow<'_>) {
     let me = row.me;
     let players = Position::ALL.map(|p| Scope::Player(p.seat(me)));
-    let groups = [Scope::AnyOther, Scope::AllOthers, Scope::AtLeast(2)];
+    let sauspiel: &[Scope] = match game.called_sau() {
+        Some(_) => &SAUSPIEL_SCOPES,
+        None => &[],
+    };
+    let groups = sauspiel.iter().copied().chain(GROUP_SCOPES);
+    // Outside a Sauspiel the opponents are all others; a partner scope is left for the
+    // compiler to reject, so the user sees why.
+    if game.called_sau().is_none() {
+        match *scope {
+            Scope::AnyOpponent => *scope = Scope::AnyOther,
+            Scope::AllOpponents => *scope = Scope::AllOthers,
+            _ => {}
+        }
+    }
     ComboBox::from_id_salt(("scope", row.index))
         .selected_text(scope_label(*scope, me))
         .width(240.0)
