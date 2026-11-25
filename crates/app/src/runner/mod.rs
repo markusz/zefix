@@ -22,11 +22,13 @@ use web_time::Instant;
 
 /// Example deals kept per query.
 pub const EXAMPLES: usize = 3;
+/// Not user-facing. Fixed so the same model always gives the same numbers: variants differ
+/// only by what changed, not by sampling noise, and undoing an edit restores the old result.
+const SEED: u64 = 42;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RunSettings {
     pub iterations: u64,
-    pub seed: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -101,10 +103,6 @@ impl Runner {
     /// Forces a fresh run on the next `sync`.
     pub fn restart(&mut self) {
         self.key = None;
-    }
-
-    pub fn is_running(&self) -> bool {
-        matches!(self.status, Status::Running)
     }
 
     /// Shown results belong to an older model than the one being edited.

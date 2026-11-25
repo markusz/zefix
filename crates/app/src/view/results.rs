@@ -21,12 +21,19 @@ pub fn show(ui: &mut Ui, runner: &mut Runner, me: Position) {
     let accent = theme::accent(ui, Accent::Results);
     theme::section_header(ui, "Ergebnis", "", accent);
     ui.horizontal(|ui| {
-        if runner.is_running() {
-            if theme::action(ui, "Stopp", accent).clicked() {
-                runner.stop();
+        match runner.status {
+            Status::Running => {
+                if theme::action(ui, "Stopp", accent).clicked() {
+                    runner.stop();
+                }
             }
-        } else if theme::action(ui, "Neu berechnen", accent).clicked() {
-            runner.restart();
+            // A finished run would only repeat itself: the seed is fixed.
+            Status::Stopped | Status::Failed(_) => {
+                if theme::action(ui, "Neu starten", accent).clicked() {
+                    runner.restart();
+                }
+            }
+            Status::Finished | Status::Invalid(_) => {}
         }
         status(ui, runner, accent);
     });

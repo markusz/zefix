@@ -1,7 +1,7 @@
 //! Browser backend: WebAssembly has no threads, so each frame steps the run for a fixed time
 //! budget and asks for the next frame until the run is done.
 
-use super::{EXAMPLES, RunSettings, Update, update_after};
+use super::{EXAMPLES, RunSettings, SEED, Update, update_after};
 use eframe::egui;
 use schafsim_core::scenario::Scenario;
 use schafsim_core::sim::Run;
@@ -27,12 +27,7 @@ impl Job {
         settings: RunSettings,
         ctx: &egui::Context,
     ) -> Result<Job, String> {
-        let run = Run::new(
-            Arc::clone(&scenario),
-            settings.iterations,
-            settings.seed,
-            EXAMPLES,
-        );
+        let run = Run::new(Arc::clone(&scenario), settings.iterations, SEED, EXAMPLES);
         ctx.request_repaint();
         Ok(Job {
             run,

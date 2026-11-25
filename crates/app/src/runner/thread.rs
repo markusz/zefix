@@ -1,6 +1,6 @@
 //! Desktop backend: a background thread steps the run and sends updates over a channel.
 
-use super::{EXAMPLES, RunSettings, Update, update_after};
+use super::{EXAMPLES, RunSettings, SEED, Update, update_after};
 use eframe::egui;
 use schafsim_core::scenario::Scenario;
 use schafsim_core::sim::Run;
@@ -69,7 +69,7 @@ fn work(
     ctx: &egui::Context,
 ) {
     let start = Instant::now();
-    let mut run = Run::new(scn, settings.iterations, settings.seed, EXAMPLES);
+    let mut run = Run::new(scn, settings.iterations, SEED, EXAMPLES);
     let round = chunks_per_round();
     while !cancel.load(Ordering::Relaxed) {
         let step = run.step(round);

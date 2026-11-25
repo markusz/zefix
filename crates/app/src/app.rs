@@ -7,11 +7,10 @@ use crate::theme;
 use crate::view::queries::{self, QueryError};
 use crate::view::tiles::EditState;
 use crate::view::{results, seats};
-use eframe::egui::{self, ComboBox, DragValue, RichText, ScrollArea, Ui};
+use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui};
 use schafsim_core::scenario::{ExprSite, ScenarioError};
 
 const SEAT_PANEL_WIDTH: f32 = 760.0;
-const DEFAULT_SEED: u64 = 42;
 const ITERATION_PRESETS: [(u64, &str); 4] = [
     (100_000, "100.000"),
     (1_000_000, "1 Mio."),
@@ -35,7 +34,6 @@ impl SchafsimApp {
             model: Model::default(),
             settings: RunSettings {
                 iterations: DEFAULT_ITERATIONS,
-                seed: DEFAULT_SEED,
             },
             edit: EditState::default(),
             runner: Runner::new(),
@@ -151,9 +149,6 @@ fn run_settings(ui: &mut Ui, settings: &mut RunSettings) {
                 ui.selectable_value(&mut settings.iterations, n, label);
             }
         });
-    ui.label("Seed");
-    ui.add(DragValue::new(&mut settings.seed))
-        .on_hover_text("Gleicher Seed → gleiches Ergebnis");
 }
 
 /// Renders the window for visual review. Needs a GPU, so it only runs on request:
