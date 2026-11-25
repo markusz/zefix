@@ -8,7 +8,10 @@ mod runner;
 mod theme;
 mod view;
 
-const TITLE: &str = "Schafsim";
+#[cfg(not(target_arch = "wasm32"))]
+use eframe::egui;
+
+const TITLE: &str = "zefix!";
 
 #[cfg(not(target_arch = "wasm32"))]
 const WINDOW_SIZE: [f32; 2] = [1440.0, 960.0];
@@ -18,17 +21,25 @@ const MIN_WINDOW_SIZE: [f32; 2] = [900.0, 600.0];
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
+        viewport: egui::ViewportBuilder::default()
             .with_title(TITLE)
             .with_inner_size(WINDOW_SIZE)
-            .with_min_inner_size(MIN_WINDOW_SIZE),
+            .with_min_inner_size(MIN_WINDOW_SIZE)
+            .with_icon(window_icon()),
         ..Default::default()
     };
     eframe::run_native(
         TITLE,
         options,
-        Box::new(|cc| Ok(Box::new(app::SchafsimApp::new(&cc.egui_ctx)))),
+        Box::new(|cc| Ok(Box::new(app::ZefixApp::new(&cc.egui_ctx)))),
     )
+}
+
+/// Falls back to no icon rather than failing to start over a broken image.
+#[cfg(not(target_arch = "wasm32"))]
+fn window_icon() -> egui::IconData {
+    eframe::icon_data::from_png_bytes(include_bytes!("../assets/logo/zefix-256.png"))
+        .unwrap_or_default()
 }
 
 /// Element ids in `index.html`.
@@ -58,7 +69,7 @@ async fn start_web() -> Result<(), String> {
         .start(
             canvas,
             eframe::WebOptions::default(),
-            Box::new(|cc| Ok(Box::new(app::SchafsimApp::new(&cc.egui_ctx)))),
+            Box::new(|cc| Ok(Box::new(app::ZefixApp::new(&cc.egui_ctx)))),
         )
         .await
         .map_err(|e| format!("{e:?}"))?;

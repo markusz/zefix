@@ -1,6 +1,8 @@
-# schafsim
+<img src="crates/app/assets/logo/zefix.svg" alt="zefix!-Logo" width="96" align="right">
 
-Monte-Carlo-Simulation für Schafkopf (langes Blatt). Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; `schafsim` gibt für jede Frage den Anteil der Deals aus, in denen sie zutrifft.
+# zefix!
+
+Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: eine Monte-Carlo-Simulation für Schafkopf (langes Blatt), als Oberfläche für Desktop und Browser und als Kommandozeile `schafsim`. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; `schafsim` gibt für jede Frage den Anteil der Deals aus, in denen sie zutrifft.
 
 ```
 $ schafsim run scenarios/ober.toml

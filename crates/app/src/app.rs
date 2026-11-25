@@ -7,10 +7,11 @@ use crate::theme;
 use crate::view::queries::{self, QueryError};
 use crate::view::tiles::EditState;
 use crate::view::{results, seats};
-use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui};
+use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui, Vec2};
 use schafsim_core::scenario::{ExprSite, ScenarioError};
 
 const SEAT_PANEL_WIDTH: f32 = 760.0;
+const LOGO_SIZE: f32 = 26.0;
 const PRECISION_WIDTH: f32 = 110.0;
 /// A run length named by what it buys: how precise the numbers get.
 struct Precision {
@@ -43,18 +44,18 @@ const DEFAULT_ITERATIONS: u64 = 1_000_000;
 #[cfg(target_arch = "wasm32")]
 const DEFAULT_ITERATIONS: u64 = 100_000;
 
-pub struct SchafsimApp {
+pub struct ZefixApp {
     model: Model,
     settings: RunSettings,
     edit: EditState,
     runner: Runner,
 }
 
-impl SchafsimApp {
-    pub fn new(ctx: &egui::Context) -> SchafsimApp {
+impl ZefixApp {
+    pub fn new(ctx: &egui::Context) -> ZefixApp {
         theme::install(ctx);
         egui_extras::install_image_loaders(ctx);
-        SchafsimApp {
+        ZefixApp {
             model: Model::default(),
             settings: RunSettings {
                 iterations: DEFAULT_ITERATIONS,
@@ -79,7 +80,7 @@ impl SchafsimApp {
     }
 }
 
-impl eframe::App for SchafsimApp {
+impl eframe::App for ZefixApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         egui::Panel::top("settings")
             .frame(theme::top_bar_frame(ui))
@@ -116,7 +117,11 @@ impl eframe::App for SchafsimApp {
 
 fn top_bar(ui: &mut Ui, model: &mut Model, settings: &mut RunSettings) {
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new("Schafsim").strong().size(18.0));
+        ui.add(
+            egui::Image::new(egui::include_image!("../assets/logo/zefix.svg"))
+                .fit_to_exact_size(Vec2::splat(LOGO_SIZE)),
+        );
+        ui.label(RichText::new("zefix!").strong().size(18.0));
         ui.separator();
         game_picker(ui, model);
         ui.separator();
@@ -242,7 +247,7 @@ mod snapshots {
         model
     }
 
-    fn render(name: &str, theme: egui::Theme, setup: impl FnOnce(&mut SchafsimApp)) {
+    fn render(name: &str, theme: egui::Theme, setup: impl FnOnce(&mut ZefixApp)) {
         render_after(name, theme, setup, |_| {});
     }
 
@@ -250,14 +255,14 @@ mod snapshots {
     fn render_after(
         name: &str,
         theme: egui::Theme,
-        setup: impl FnOnce(&mut SchafsimApp),
-        interact: impl FnOnce(&mut Harness<'_, SchafsimApp>),
+        setup: impl FnOnce(&mut ZefixApp),
+        interact: impl FnOnce(&mut Harness<'_, ZefixApp>),
     ) {
         let mut harness = Harness::builder()
             .with_size(SIZE)
             .with_theme(theme)
             .wgpu()
-            .build_eframe(|cc| SchafsimApp::new(&cc.egui_ctx));
+            .build_eframe(|cc| ZefixApp::new(&cc.egui_ctx));
         setup(harness.state_mut());
         harness.step();
         interact(&mut harness);

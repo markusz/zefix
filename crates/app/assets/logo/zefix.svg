@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- zefix logo: a tilted card back in Bavarian lozenges with a stamped "z". -->
+  <defs>
+    <!-- One tile holds a blue lozenge on white; tiled, they alternate like the Bavarian Rauten. -->
+    <pattern id="rauten" width="150" height="210" patternUnits="userSpaceOnUse" x="-75" y="-105">
+      <rect width="150" height="210" fill="#ffffff"/>
+      <polygon points="75,0 150,105 75,210 0,105" fill="#1e78c8"/>
+    </pattern>
+    <clipPath id="face">
+      <rect x="-262" y="-372" width="524" height="744" rx="46"/>
+    </clipPath>
+  </defs>
+  <g transform="translate(512 512) rotate(15)">
+    <rect x="-280" y="-390" width="560" height="780" rx="64" fill="#ffffff" stroke="#282828" stroke-width="30"/>
+    <rect x="-262" y="-372" width="524" height="744" fill="url(#rauten)" clip-path="url(#face)"/>
+    <rect x="-262" y="-372" width="524" height="744" rx="46" fill="none" stroke="#ffffff" stroke-width="14"/>
+    <g transform="rotate(-15)">
+      <polygon
+        points="-150,-176 150,-176 150,-110 -36,110 154,110 154,176 -154,176 -154,110 32,-110 -150,-110"
+        fill="#f6f4ec" stroke="#282828" stroke-width="44" stroke-linejoin="round"
+        paint-order="stroke"/>
+    </g>
+  </g>
+</svg>
