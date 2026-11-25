@@ -11,13 +11,37 @@ use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui};
 use schafsim_core::scenario::{ExprSite, ScenarioError};
 
 const SEAT_PANEL_WIDTH: f32 = 760.0;
-const ITERATION_PRESETS: [(u64, &str); 4] = [
-    (100_000, "100.000"),
-    (1_000_000, "1 Mio."),
-    (10_000_000, "10 Mio."),
-    (100_000_000, "100 Mio."),
+const PRECISION_WIDTH: f32 = 110.0;
+/// A run length named by what it buys: how precise the numbers get.
+struct Precision {
+    name: &'static str,
+    iterations: u64,
+}
+
+const PRECISIONS: [Precision; 4] = [
+    Precision {
+        name: "Sehr schnell",
+        iterations: 10_000,
+    },
+    Precision {
+        name: "Schnell",
+        iterations: 100_000,
+    },
+    Precision {
+        name: "Normal",
+        iterations: 1_000_000,
+    },
+    Precision {
+        name: "Genau",
+        iterations: 10_000_000,
+    },
 ];
-const DEFAULT_ITERATIONS: u64 = 10_000_000;
+/// Enough for about ±0,1 percentage points; more is one click away in the top bar.
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_ITERATIONS: u64 = 1_000_000;
+/// The browser simulates on one core, so it starts smaller (about ±0,3 points).
+#[cfg(target_arch = "wasm32")]
+const DEFAULT_ITERATIONS: u64 = 100_000;
 
 pub struct SchafsimApp {
     model: Model,
@@ -137,16 +161,17 @@ fn game_picker(ui: &mut Ui, model: &mut Model) {
 }
 
 fn run_settings(ui: &mut Ui, settings: &mut RunSettings) {
-    ui.label("Deals");
-    let current = ITERATION_PRESETS
+    ui.label("Genauigkeit");
+    let current = PRECISIONS
         .iter()
-        .find(|(n, _)| *n == settings.iterations)
-        .map_or("?", |(_, label)| label);
-    ComboBox::from_id_salt("iterations")
+        .find(|p| p.iterations == settings.iterations)
+        .map_or("?", |p| p.name);
+    ComboBox::from_id_salt("precision")
         .selected_text(current)
+        .width(PRECISION_WIDTH)
         .show_ui(ui, |ui| {
-            for (n, label) in ITERATION_PRESETS {
-                ui.selectable_value(&mut settings.iterations, n, label);
+            for p in PRECISIONS {
+                ui.selectable_value(&mut settings.iterations, p.iterations, p.name);
             }
         });
 }
@@ -160,6 +185,7 @@ mod snapshots {
     use crate::view::tiles::Selection;
     use crate::view::tiles::Target;
     use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
     use schafsim_core::cards::{Card, Suit};
     use schafsim_core::game::Seat;
     use std::path::PathBuf;
@@ -217,12 +243,24 @@ mod snapshots {
     }
 
     fn render(name: &str, theme: egui::Theme, setup: impl FnOnce(&mut SchafsimApp)) {
+        render_after(name, theme, setup, |_| {});
+    }
+
+    /// Like `render`, with `interact` run once the first frame is laid out (e.g. a click).
+    fn render_after(
+        name: &str,
+        theme: egui::Theme,
+        setup: impl FnOnce(&mut SchafsimApp),
+        interact: impl FnOnce(&mut Harness<'_, SchafsimApp>),
+    ) {
         let mut harness = Harness::builder()
             .with_size(SIZE)
             .with_theme(theme)
             .wgpu()
             .build_eframe(|cc| SchafsimApp::new(&cc.egui_ctx));
         setup(harness.state_mut());
+        harness.step();
+        interact(&mut harness);
         for _ in 0..STEPS {
             harness.step();
             std::thread::sleep(STEP_PAUSE);
@@ -250,6 +288,12 @@ mod snapshots {
             app.model = tout();
             app.edit.picker = Some(Target::Seat(Seat::Me));
         });
+        render_after(
+            "precision_open",
+            egui::Theme::Dark,
+            |_| {},
+            |h| h.get_by_value("Normal").click(),
+        );
         render("query_error", egui::Theme::Dark, |app| {
             if let Some(query) = app.model.queries.first_mut() {
                 query.mode = crate::model::QueryMode::Text;

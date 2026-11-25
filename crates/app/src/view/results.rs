@@ -91,14 +91,14 @@ fn error_label(ui: &mut Ui, msg: &str) {
 fn summary(shown: &Shown) -> String {
     let o = &shown.snapshot.outcome;
     let mut text = format!(
-        "{} von {} Deals · {} s",
+        "{} von {} gemischt · {} s",
         format::int(o.accepted),
         format::int(shown.settings.iterations),
         format::decimal(shown.snapshot.elapsed.as_secs_f64(), 2)
     );
     if o.attempts != o.accepted {
         text += &format!(
-            " · Akzeptanz {}",
+            " · davon passend {}",
             format::percent(ratio(o.accepted, o.attempts))
         );
     }
