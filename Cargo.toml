@@ -7,11 +7,13 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-schafsim-core = { path = "crates/core" }
+schafsim-core = { path = "crates/core", default-features = false }
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 eframe = "0.37.0"
 egui_extras = { version = "0.37.0", default-features = false, features = ["svg"] }
+wasm-bindgen-futures = "0.4.80"
+web-time = "1.1.0"
 comfy-table = { version = "8.0.1", default-features = false }
 rand_xoshiro = "0.8.1"
 rayon = "1.12.0"

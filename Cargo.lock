@@ -3167,6 +3167,8 @@ dependencies = [
  "egui_extras",
  "egui_kittest",
  "schafsim-core",
+ "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]

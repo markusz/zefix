@@ -1,12 +1,15 @@
-//! Parallel Monte Carlo loop. Work is split into fixed-size chunks with their
-//! own seeded RNG, so results only depend on the seed, not on thread count.
+//! Monte Carlo loop. Work is split into fixed-size chunks with their own seeded RNG, so
+//! results only depend on the seed, not on thread count. With the `parallel` feature chunks
+//! run on rayon; without it (WebAssembly) they run one after another with the same result.
 
 use crate::lang::eval::{Deal, Evaluator};
 use crate::sampler::Sampler;
 use crate::scenario::Scenario;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rand_xoshiro::rand_core::SeedableRng;
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
+use std::borrow::Borrow;
 
 const CHUNK: u64 = 1 << 14;
 /// Golden-ratio constant; spreads chunk indices across the seed space.
@@ -90,8 +93,9 @@ pub enum RunState {
 
 /// A simulation advanced in steps, so front ends can show partial results and stop early.
 /// Stepping visits the same chunks with the same seeds as [`run`], so results are identical.
-pub struct Run<'s> {
-    scn: &'s Scenario,
+/// `S` is `&Scenario` for a borrowed scenario or e.g. `Arc<Scenario>` for one the run owns.
+pub struct Run<S: Borrow<Scenario>> {
+    scn: S,
     sampler: Sampler,
     iterations: u64,
     seed: u64,
@@ -100,16 +104,18 @@ pub struct Run<'s> {
     outcome: Outcome,
 }
 
-impl<'s> Run<'s> {
-    pub fn new(scn: &'s Scenario, iterations: u64, seed: u64, max_examples: usize) -> Run<'s> {
+impl<S: Borrow<Scenario>> Run<S> {
+    pub fn new(scn: S, iterations: u64, seed: u64, max_examples: usize) -> Run<S> {
+        let sampler = Sampler::new(scn.borrow());
+        let outcome = Outcome::new(scn.borrow().queries.len());
         Run {
             scn,
-            sampler: Sampler::new(scn),
+            sampler,
             iterations,
             seed,
             max_examples,
             next_chunk: 0,
-            outcome: Outcome::new(scn.queries.len()),
+            outcome,
         }
     }
 
@@ -117,18 +123,24 @@ impl<'s> Run<'s> {
         self.iterations.div_ceil(CHUNK)
     }
 
-    /// Simulates up to `max_chunks` further chunks in parallel.
+    /// Simulates up to `max_chunks` further chunks, in parallel with the `parallel` feature.
     pub fn step(&mut self, max_chunks: u64) -> Result<RunState, SimError> {
         let total = self.total_chunks();
         let end = self.next_chunk.saturating_add(max_chunks).min(total);
+        let (scn, sampler) = (self.scn.borrow(), &self.sampler);
+        let (iterations, seed, max_examples) = (self.iterations, self.seed, self.max_examples);
+        let simulate = |c: u64| {
+            let n = CHUNK.min(iterations - c * CHUNK);
+            let chunk_seed = seed ^ c.wrapping_mul(CHUNK_SEED_MIX);
+            run_chunk(scn, sampler, n, chunk_seed, max_examples)
+        };
+        #[cfg(feature = "parallel")]
         let chunks: Vec<Result<Outcome, SimError>> = (self.next_chunk..end)
             .into_par_iter()
-            .map(|c| {
-                let n = CHUNK.min(self.iterations - c * CHUNK);
-                let chunk_seed = self.seed ^ c.wrapping_mul(CHUNK_SEED_MIX);
-                run_chunk(self.scn, &self.sampler, n, chunk_seed, self.max_examples)
-            })
+            .map(simulate)
             .collect();
+        #[cfg(not(feature = "parallel"))]
+        let chunks: Vec<Result<Outcome, SimError>> = (self.next_chunk..end).map(simulate).collect();
         for chunk in chunks {
             self.outcome.merge(chunk?, self.max_examples);
         }

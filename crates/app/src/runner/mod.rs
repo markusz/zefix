@@ -1,21 +1,27 @@
-//! Runs simulations on a background thread and restarts them whenever the model changes.
-//! The worker steps the core `Run` in rounds, so results sharpen live and a stop takes effect
-//! within one round.
+//! Runs simulations and restarts them whenever the model changes. The core `Run` is stepped
+//! in small rounds, so results sharpen live and a stop takes effect within one round. On the
+//! desktop a background thread steps it; in the browser, which has no threads, each frame does.
+
+#[cfg(target_arch = "wasm32")]
+mod frame;
+#[cfg(not(target_arch = "wasm32"))]
+mod thread;
+
+#[cfg(target_arch = "wasm32")]
+use frame::Job;
+#[cfg(not(target_arch = "wasm32"))]
+use thread::Job;
 
 use crate::model::Spec;
 use eframe::egui;
 use schafsim_core::scenario::{Scenario, ScenarioError};
 use schafsim_core::sim::{Outcome, Run, RunState};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, Sender, channel};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// Example deals kept per query.
 pub const EXAMPLES: usize = 3;
-/// Chunks per thread and round: small enough for snappy updates and stops.
-const CHUNKS_PER_THREAD: u64 = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RunSettings {
@@ -45,23 +51,11 @@ pub enum Status {
     Invalid(ScenarioError),
 }
 
-struct Job {
-    cancel: Arc<AtomicBool>,
-    updates: Receiver<Update>,
-    scenario: Arc<Scenario>,
-}
-
 /// Results together with the scenario that produced them.
 pub struct Shown {
     pub scenario: Arc<Scenario>,
     pub snapshot: Snapshot,
     pub settings: RunSettings,
-}
-
-impl Drop for Job {
-    fn drop(&mut self) {
-        self.cancel.store(true, Ordering::Relaxed);
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -116,7 +110,7 @@ impl Runner {
     /// Shown results belong to an older model than the one being edited.
     pub fn is_stale(&self) -> bool {
         match (&self.job, &self.shown) {
-            (Some(job), Some(shown)) => !Arc::ptr_eq(&job.scenario, &shown.scenario),
+            (Some(job), Some(shown)) => !Arc::ptr_eq(job.scenario(), &shown.scenario),
             (None, _) => matches!(self.status, Status::Invalid(_)),
             (Some(_), None) => false,
         }
@@ -127,9 +121,9 @@ impl Runner {
     }
 
     fn poll(&mut self) {
-        let Some(job) = &self.job else { return };
-        let updates: Vec<Update> = job.updates.try_iter().collect();
-        let scenario = Arc::clone(&job.scenario);
+        let Some(job) = &mut self.job else { return };
+        let updates = job.updates();
+        let scenario = Arc::clone(job.scenario());
         let Some(settings) = self.settings() else {
             return;
         };
@@ -158,12 +152,12 @@ impl Runner {
         self.job = None;
         match Scenario::from_config(key.spec.to_config()) {
             Ok(scn) => {
-                self.status = match spawn(Arc::new(scn), key.settings, ctx.clone()) {
+                self.status = match Job::start(Arc::new(scn), key.settings, ctx) {
                     Ok(job) => {
                         self.job = Some(job);
                         Status::Running
                     }
-                    Err(e) => Status::Failed(format!("Thread nicht gestartet: {e}")),
+                    Err(e) => Status::Failed(e),
                 };
             }
             Err(e) => self.status = Status::Invalid(e),
@@ -171,57 +165,30 @@ impl Runner {
     }
 }
 
-fn spawn(scn: Arc<Scenario>, settings: RunSettings, ctx: egui::Context) -> std::io::Result<Job> {
-    let cancel = Arc::new(AtomicBool::new(false));
-    let (tx, rx) = channel();
-    let flag = Arc::clone(&cancel);
-    let worker_scn = Arc::clone(&scn);
-    thread::Builder::new()
-        .name("simulation".into())
-        .spawn(move || work(&worker_scn, settings, &flag, &tx, &ctx))?;
-    Ok(Job {
-        cancel,
-        updates: rx,
-        scenario: scn,
-    })
+/// The run as far as it got; `start` is when it began.
+fn snapshot<S: std::borrow::Borrow<Scenario>>(run: &Run<S>, start: Instant) -> Snapshot {
+    Snapshot {
+        outcome: run.outcome().clone(),
+        fraction: run.fraction_done(),
+        elapsed: start.elapsed(),
+    }
 }
 
-fn chunks_per_round() -> u64 {
-    let threads = thread::available_parallelism().map_or(1, |n| n.get() as u64);
-    threads * CHUNKS_PER_THREAD
+/// Turns the result of one step into the update the UI sees.
+fn update_after<S: std::borrow::Borrow<Scenario>>(
+    run: &Run<S>,
+    step: Result<RunState, schafsim_core::sim::SimError>,
+    start: Instant,
+) -> Update {
+    match step {
+        Ok(RunState::Running) => Update::Progress(snapshot(run, start)),
+        Ok(RunState::Finished) => Update::Finished(snapshot(run, start)),
+        Err(e) => Update::Failed(e.to_string()),
+    }
 }
 
-fn work(
-    scn: &Scenario,
-    settings: RunSettings,
-    cancel: &AtomicBool,
-    tx: &Sender<Update>,
-    ctx: &egui::Context,
-) {
-    let start = Instant::now();
-    let mut run = Run::new(scn, settings.iterations, settings.seed, EXAMPLES);
-    let round = chunks_per_round();
-    while !cancel.load(Ordering::Relaxed) {
-        let update = match run.step(round) {
-            Ok(state) => {
-                let snap = Snapshot {
-                    outcome: run.outcome().clone(),
-                    fraction: run.fraction_done(),
-                    elapsed: start.elapsed(),
-                };
-                match state {
-                    RunState::Running => Update::Progress(snap),
-                    RunState::Finished => Update::Finished(snap),
-                }
-            }
-            Err(e) => Update::Failed(e.to_string()),
-        };
-        let done = !matches!(update, Update::Progress(_));
-        // A closed channel means the UI dropped this job; nothing left to do.
-        if tx.send(update).is_err() || done {
-            ctx.request_repaint();
-            return;
-        }
-        ctx.request_repaint();
+impl Update {
+    fn is_final(&self) -> bool {
+        !matches!(self, Update::Progress(_))
     }
 }

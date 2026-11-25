@@ -22,9 +22,11 @@ Akzeptanz 57,14 % (17.502.225 Versuche)
 |---|---|
 | `crates/core` (`schafsim-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
 | `crates/cli` (`schafsim-cli`) | Kommandozeile `schafsim` |
-| `crates/app` (`schafsim-app`) | Desktop-Oberfläche: Bedingungen und Abfragen per Baustein, Ergebnisse live |
+| `crates/app` (`schafsim-app`) | Oberfläche für Desktop und Browser: Bedingungen und Abfragen per Baustein, Ergebnisse live |
 
 Installieren: `cargo install --path crates/cli` · Oberfläche starten: `cargo run --release -p schafsim-app`
+
+Im Browser (braucht `rustup target add wasm32-unknown-unknown` und [trunk](https://trunkrs.dev)): `cd crates/app && trunk serve --release`, dann http://127.0.0.1:8080 öffnen. `trunk build --release` legt die statischen Dateien in `crates/app/dist`. Im Browser rechnet die Simulation auf einem Kern, das Ergebnis ist bei gleichem Seed dasselbe wie auf dem Desktop.
 
 ## CLI
 
