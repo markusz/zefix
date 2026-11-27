@@ -3,10 +3,10 @@ mod report;
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use report::RunInfo;
-use schafsim_core::scenario::Scenario;
-use schafsim_core::sim;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use zefix_core::scenario::Scenario;
+use zefix_core::sim;
 
 #[derive(Parser)]
 #[command(version, about = "Schafkopf-Simulator")]

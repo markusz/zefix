@@ -14,11 +14,11 @@ use thread::Job;
 
 use crate::model::Spec;
 use eframe::egui;
-use schafsim_core::scenario::{Scenario, ScenarioError};
-use schafsim_core::sim::{Outcome, Run, RunState};
 use std::sync::Arc;
 use std::time::Duration;
 use web_time::Instant;
+use zefix_core::scenario::{Scenario, ScenarioError};
+use zefix_core::sim::{Outcome, Run, RunState};
 
 /// Example deals kept per query.
 pub const EXAMPLES: usize = 3;
@@ -175,7 +175,7 @@ fn snapshot<S: std::borrow::Borrow<Scenario>>(run: &Run<S>, start: Instant) -> S
 /// Turns the result of one step into the update the UI sees.
 fn update_after<S: std::borrow::Borrow<Scenario>>(
     run: &Run<S>,
-    step: Result<RunState, schafsim_core::sim::SimError>,
+    step: Result<RunState, zefix_core::sim::SimError>,
     start: Instant,
 ) -> Update {
     match step {

@@ -2,13 +2,13 @@
 
 use super::{EXAMPLES, RunSettings, SEED, Update, update_after};
 use eframe::egui;
-use schafsim_core::scenario::Scenario;
-use schafsim_core::sim::Run;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 use web_time::Instant;
+use zefix_core::scenario::Scenario;
+use zefix_core::sim::Run;
 
 /// Chunks per thread and round: small enough for snappy updates and stops.
 const CHUNKS_PER_THREAD: u64 = 4;

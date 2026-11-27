@@ -1,7 +1,7 @@
 //! Simulated probabilities against exact hypergeometric results.
 
-use schafsim_core::scenario::Scenario;
-use schafsim_core::sim;
+use zefix_core::scenario::Scenario;
+use zefix_core::sim;
 
 const ITERATIONS: u64 = 400_000;
 const SEED: u64 = 7;

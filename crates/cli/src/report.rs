@@ -1,13 +1,13 @@
 //! Text and JSON rendering of a simulation run.
 
 use comfy_table::{CellAlignment, Table, presets};
-use schafsim_core::game::Seat;
-use schafsim_core::lang::eval::Deal;
-use schafsim_core::scenario::Scenario;
-use schafsim_core::sim::Outcome;
-use schafsim_core::stats::{self, QueryResult, ratio};
 use serde_json::json;
 use std::time::Duration;
+use zefix_core::game::Seat;
+use zefix_core::lang::eval::Deal;
+use zefix_core::scenario::Scenario;
+use zefix_core::sim::Outcome;
+use zefix_core::stats::{self, QueryResult, ratio};
 
 const PERCENT: f64 = 100.0;
 const DECIMALS: usize = 2;

@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-schafsim-core = { path = "crates/core", default-features = false }
+zefix-core = { path = "crates/core", default-features = false }
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 eframe = "0.37.0"

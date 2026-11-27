@@ -5,8 +5,8 @@ use super::tiles::{self, EditState, Target, TileRow};
 use crate::model::{Model, OTHER_PLAYERS, Position, QueryMode, QueryModel, Scope};
 use crate::theme::{self, Accent};
 use eframe::egui::{Color32, ComboBox, DragValue, RichText, TextEdit, Ui};
-use schafsim_core::cards::Cards;
-use schafsim_core::game::Game;
+use zefix_core::cards::Cards;
+use zefix_core::game::Game;
 
 const NAME_WIDTH: f32 = 260.0;
 

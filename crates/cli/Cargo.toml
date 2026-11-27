@@ -1,15 +1,15 @@
 [package]
-name = "schafsim-cli"
-description = "Command line front end for schafsim-core"
+name = "zefix-cli"
+description = "Command line front end for zefix-core"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "schafsim"
+name = "zefix"
 path = "src/main.rs"
 
 [dependencies]
-schafsim-core = { workspace = true, features = ["parallel"] }
+zefix-core = { workspace = true, features = ["parallel"] }
 anyhow.workspace = true
 clap.workspace = true
 comfy-table.workspace = true

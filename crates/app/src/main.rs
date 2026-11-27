@@ -1,4 +1,4 @@
-//! Desktop and web UI for schafsim: build a scenario from card tiles and watch the probabilities converge.
+//! Desktop and web UI for zefix!: build a scenario from card tiles and watch the probabilities converge.
 
 mod app;
 mod format;
@@ -44,7 +44,7 @@ fn window_icon() -> egui::IconData {
 
 /// Element ids in `index.html`.
 #[cfg(target_arch = "wasm32")]
-const CANVAS_ID: &str = "schafsim_canvas";
+const CANVAS_ID: &str = "zefix_canvas";
 #[cfg(target_arch = "wasm32")]
 const LOADING_ID: &str = "loading";
 

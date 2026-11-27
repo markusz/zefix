@@ -5,8 +5,8 @@ use eframe::egui::{
     self, Align2, Color32, FontId, ImageSource, Painter, Pos2, Rect, Response, Sense, Shape,
     Stroke, StrokeKind, Ui, Vec2, load::TexturePoll, pos2, vec2,
 };
-use schafsim_core::cards::{Card, Suit};
 use std::f32::consts::{FRAC_PI_2, PI};
+use zefix_core::cards::{Card, Suit};
 
 pub const CARD_SIZE: Vec2 = vec2(34.0, 48.0);
 const CARD_FACE: Color32 = Color32::from_rgb(250, 248, 240);

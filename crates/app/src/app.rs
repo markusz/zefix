@@ -8,7 +8,7 @@ use crate::view::queries::{self, QueryError};
 use crate::view::tiles::EditState;
 use crate::view::{results, seats};
 use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui, Vec2};
-use schafsim_core::scenario::{ExprSite, ScenarioError};
+use zefix_core::scenario::{ExprSite, ScenarioError};
 
 const SEAT_PANEL_WIDTH: f32 = 760.0;
 const LOGO_SIZE: f32 = 26.0;
@@ -182,7 +182,7 @@ fn run_settings(ui: &mut Ui, settings: &mut RunSettings) {
 }
 
 /// Renders the window for visual review. Needs a GPU, so it only runs on request:
-/// `cargo test -p schafsim-app -- --ignored`; images land in `target/ui-snapshots/`.
+/// `cargo test -p zefix-app -- --ignored`; images land in `target/ui-snapshots/`.
 #[cfg(test)]
 mod snapshots {
     use super::*;
@@ -191,10 +191,10 @@ mod snapshots {
     use crate::view::tiles::Target;
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
-    use schafsim_core::cards::{Card, Suit};
-    use schafsim_core::game::Seat;
     use std::path::PathBuf;
     use std::time::Duration;
+    use zefix_core::cards::{Card, Suit};
+    use zefix_core::game::Seat;
 
     const SIZE: [f32; 2] = [1440.0, 960.0];
     const STEPS: usize = 40;
@@ -237,7 +237,7 @@ mod snapshots {
             "Ein Gegner hat SO + ≥ 3 Trumpf",
             Scope::AnyOther,
             vec![
-                Tile::Card(Card::new(Suit::Schellen, schafsim_core::cards::Rank::Ober)),
+                Tile::Card(Card::new(Suit::Schellen, zefix_core::cards::Rank::Ober)),
                 Tile::Count {
                     set: CardSet::Trumpf,
                     op: CountOp::AtLeast(3),

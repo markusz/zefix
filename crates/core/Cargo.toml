@@ -1,5 +1,5 @@
 [package]
-name = "schafsim-core"
+name = "zefix-core"
 description = "Schafkopf deal simulation: game rules, query language, Monte Carlo engine"
 version.workspace = true
 edition.workspace = true

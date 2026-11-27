@@ -6,9 +6,9 @@ use crate::model::{self, CardSet, CountKind, CountOp, Tile, cards_of};
 use crate::paint::{self, CardLook, MiniCard, Negation, RuleFace, RuleSymbol};
 use crate::theme;
 use eframe::egui::{self, Button, Color32, ComboBox, Rect, Sense, Slider, Stroke, Ui, pos2, vec2};
-use schafsim_core::cards::{Card, Cards, Rank};
-use schafsim_core::game::{Game, Seat};
-use schafsim_core::scenario::HAND_SIZE;
+use zefix_core::cards::{Card, Cards, Rank};
+use zefix_core::game::{Game, Seat};
+use zefix_core::scenario::HAND_SIZE;
 
 /// The placeholder is wider than a card so its two buttons fit.
 const PLACEHOLDER_CARDS: f32 = 1.5;

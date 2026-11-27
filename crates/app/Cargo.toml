@@ -1,22 +1,22 @@
 [package]
-name = "schafsim-app"
-description = "Desktop and web front end for schafsim-core"
+name = "zefix-app"
+description = "Desktop and web front end for zefix-core"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "schafsim-app"
+name = "zefix-app"
 path = "src/main.rs"
 
 [dependencies]
 eframe.workspace = true
 egui_extras.workspace = true
-schafsim-core.workspace = true
+zefix-core.workspace = true
 web-time.workspace = true
 
 # Threads exist everywhere but in the browser.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-schafsim-core = { workspace = true, features = ["parallel"] }
+zefix-core = { workspace = true, features = ["parallel"] }
 
 [dev-dependencies]
 egui_kittest = { version = "0.37.0", features = ["snapshot", "wgpu", "eframe"] }

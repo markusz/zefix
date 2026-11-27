@@ -1,9 +1,9 @@
 //! The scenario as the UI edits it: tiles per seat and per query. Compiles to a core
 //! `Config` via query-language text, so the UI and the TOML files share one semantics.
 
-use schafsim_core::cards::{Card, Cards, Suit};
-use schafsim_core::game::{Game, GameKind, PLAYER_COUNT, Seat};
-use schafsim_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig};
+use zefix_core::cards::{Card, Cards, Suit};
+use zefix_core::game::{Game, GameKind, PLAYER_COUNT, Seat};
+use zefix_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig};
 
 /// Upper bound for "at least k other players".
 pub const OTHER_PLAYERS: u8 = (PLAYER_COUNT - 1) as u8;
@@ -588,7 +588,7 @@ impl Spec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use schafsim_core::scenario::Scenario;
+    use zefix_core::scenario::Scenario;
 
     fn card(s: &str) -> Tile {
         Tile::Card(Card::parse(s).unwrap_or_else(|| panic!("{s}")))

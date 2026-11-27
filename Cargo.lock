@@ -3160,41 +3160,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "schafsim-app"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui_extras",
- "egui_kittest",
- "schafsim-core",
- "wasm-bindgen-futures",
- "web-time",
-]
-
-[[package]]
-name = "schafsim-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "comfy-table",
- "rayon",
- "schafsim-core",
- "serde_json",
-]
-
-[[package]]
-name = "schafsim-core"
-version = "0.1.0"
-dependencies = [
- "rand_xoshiro",
- "rayon",
- "serde",
- "thiserror 2.0.21",
- "toml",
-]
-
-[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4864,6 +4829,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2da34e7164b75d803c3197b86e6cf61b874106fbd472c5082575a8bc5fbd0907"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "zefix-app"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui_extras",
+ "egui_kittest",
+ "wasm-bindgen-futures",
+ "web-time",
+ "zefix-core",
+]
+
+[[package]]
+name = "zefix-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "comfy-table",
+ "rayon",
+ "serde_json",
+ "zefix-core",
+]
+
+[[package]]
+name = "zefix-core"
+version = "0.1.0"
+dependencies = [
+ "rand_xoshiro",
+ "rayon",
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
 ]
 
 [[package]]

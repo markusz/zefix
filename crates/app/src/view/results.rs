@@ -7,9 +7,9 @@ use crate::paint::{self, CardLook};
 use crate::runner::{Runner, Shown, Status};
 use crate::theme::{self, Accent};
 use eframe::egui::{self, CornerRadius, ProgressBar, RichText, Sense, Stroke, Ui, vec2};
-use schafsim_core::lang::eval::Deal;
-use schafsim_core::scenario::ScenarioError;
-use schafsim_core::stats::{self, QueryResult, ratio};
+use zefix_core::lang::eval::Deal;
+use zefix_core::scenario::ScenarioError;
+use zefix_core::stats::{self, QueryResult, ratio};
 
 const BAR_HEIGHT: f32 = 14.0;
 const EXAMPLE_CARD_SCALE: f32 = 0.6;

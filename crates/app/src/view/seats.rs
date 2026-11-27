@@ -4,7 +4,7 @@ use super::tiles::{self, EditState, Target, TileRow};
 use crate::model::{Model, Position};
 use crate::theme::{self, Accent};
 use eframe::egui::{self, RichText, Ui};
-use schafsim_core::game::{Game, Seat};
+use zefix_core::game::{Game, Seat};
 
 pub fn seat_label(seat: Seat) -> &'static str {
     match seat {

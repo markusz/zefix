@@ -3,11 +3,11 @@
 
 use super::{EXAMPLES, RunSettings, SEED, Update, update_after};
 use eframe::egui;
-use schafsim_core::scenario::Scenario;
-use schafsim_core::sim::Run;
 use std::sync::Arc;
 use std::time::Duration;
 use web_time::Instant;
+use zefix_core::scenario::Scenario;
+use zefix_core::sim::Run;
 
 /// Simulation time per frame; leaves room for drawing within a 60 Hz frame.
 const FRAME_BUDGET: Duration = Duration::from_millis(10);

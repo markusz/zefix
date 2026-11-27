@@ -2,10 +2,10 @@
 
 # zefix!
 
-Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: eine Monte-Carlo-Simulation für Schafkopf (langes Blatt), als Oberfläche für Desktop und Browser und als Kommandozeile `schafsim`. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; `schafsim` gibt für jede Frage den Anteil der Deals aus, in denen sie zutrifft.
+Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: eine Monte-Carlo-Simulation für Schafkopf (langes Blatt), als Oberfläche für Desktop und Browser und als Kommandozeile `zefix`. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; `zefix` gibt für jede Frage den Anteil der Deals aus, in denen sie zutrifft.
 
 ```
-$ schafsim run scenarios/ober.toml
+$ zefix run scenarios/ober.toml
 Sauspiel auf die Schellen-Sau · 10.000.000 Deals · Seed 42 · 0,21 s
 Akzeptanz 57,14 % (17.502.225 Versuche)
 
@@ -22,19 +22,19 @@ Akzeptanz 57,14 % (17.502.225 Versuche)
 
 | Crate | Inhalt |
 |---|---|
-| `crates/core` (`schafsim-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
-| `crates/cli` (`schafsim-cli`) | Kommandozeile `schafsim` |
-| `crates/app` (`schafsim-app`) | Oberfläche für Desktop und Browser: Bedingungen und Abfragen per Baustein, Ergebnisse live |
+| `crates/core` (`zefix-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
+| `crates/cli` (`zefix-cli`) | Kommandozeile `zefix` |
+| `crates/app` (`zefix-app`) | Oberfläche für Desktop und Browser: Bedingungen und Abfragen per Baustein, Ergebnisse live |
 
-Installieren: `cargo install --path crates/cli` · Oberfläche starten: `cargo run --release -p schafsim-app`
+Installieren: `cargo install --path crates/cli` · Oberfläche starten: `cargo run --release -p zefix-app`
 
 Im Browser (braucht `rustup target add wasm32-unknown-unknown` und [trunk](https://trunkrs.dev)): `cd crates/app && trunk serve --release`, dann http://127.0.0.1:8080 öffnen. `trunk build --release` legt die statischen Dateien in `crates/app/dist`. Im Browser rechnet die Simulation auf einem Kern, kommt aber auf dieselben Zahlen wie der Desktop. Jeder Push auf `develop` wird von Vercel gebaut (`vercel.json`, `scripts/vercel-build.sh`) und auf https://zefix.markusziller.de veröffentlicht.
 
 ## CLI
 
 ```
-schafsim run <config> [-n 1e6] [--seed N] [--format text|json] [--examples N] [--threads N]
-schafsim check <config>
+zefix run <config> [-n 1e6] [--seed N] [--format text|json] [--examples N] [--threads N]
+zefix check <config>
 ```
 
 `±95 %` ist die halbe Breite des 95-%-Wilson-Intervalls. Gleicher Seed → gleiches Ergebnis, unabhängig von der Thread-Zahl.
