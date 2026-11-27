@@ -20,6 +20,7 @@ import {
 } from "../model";
 import { CardFace, RuleFace, cardName } from "./Cards";
 import { Stepper } from "./Controls";
+import { PlusIcon } from "./Icons";
 
 /** Which tile is being edited and which row has its card picker open; one of each at most. */
 export interface EditState {
@@ -55,7 +56,8 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
     setEdit({ ...edit, selected: selected === index ? null : { row, index } });
   const addRule = () => {
     onChange([...tiles, { Count: { set: "Trumpf", op: { AtLeast: 1 } } }]);
-    setEdit({ ...edit, selected: { row, index: tiles.length } });
+    // The new rule opens in its editor; the picker makes room for it.
+    setEdit({ picker: null, selected: { row, index: tiles.length } });
   };
   const toggle = (card: Card) => {
     onChange(toggleCard(tiles, card, info.order));
@@ -81,24 +83,14 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
             )}
           </button>
         ))}
-        <div className="add-slot">
-          <button
-            className={`add-button ${pickerOpen ? "active" : ""}`}
-            onClick={() => setEdit({ ...edit, picker: pickerOpen ? null : row })}
-            title="Eine bestimmte Karte, z. B. der Gras-Ober"
-          >
-            <span className="mini-card solid" />
-            {pickerOpen ? "Fertig" : "Karte"}
-          </button>
-          <button
-            className="add-button"
-            onClick={addRule}
-            title="Wie viele einer Sorte, z. B. mind. 3 Gras oder keine Herz"
-          >
-            <span className="mini-card dotted" />
-            Regel
-          </button>
-        </div>
+        <button
+          className={`add-card ${pickerOpen ? "active" : ""}`}
+          onClick={() => setEdit({ selected: null, picker: pickerOpen ? null : row })}
+          aria-expanded={pickerOpen}
+          title="Karte oder Regel hinzufügen"
+        >
+          <PlusIcon size={20} />
+        </button>
       </div>
       {tile && selected !== null && (
         <TileEditor
@@ -113,7 +105,16 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
           onClose={() => setEdit({ ...edit, selected: null })}
         />
       )}
-      {pickerOpen && <CardPicker held={fixed} blocked={blocked} info={info} onToggle={toggle} />}
+      {pickerOpen && (
+        <CardPicker
+          held={fixed}
+          blocked={blocked}
+          info={info}
+          onToggle={toggle}
+          onAddRule={addRule}
+          onClose={() => setEdit({ ...edit, picker: null })}
+        />
+      )}
     </div>
   );
 }
@@ -251,11 +252,15 @@ function CardPicker({
   blocked,
   info,
   onToggle,
+  onAddRule,
+  onClose,
 }: {
   held: Card[];
   blocked: Set<Card>;
   info: GameInfo;
   onToggle: (card: Card) => void;
+  onAddRule: () => void;
+  onClose: () => void;
 }) {
   const full = held.length >= HAND_SIZE;
   let hint = `${held.length} von ${HAND_SIZE} Karten festgelegt`;
@@ -287,6 +292,18 @@ function CardPicker({
         </div>
       ))}
       <div className="muted small-text">{hint}</div>
+      <div className="picker-actions">
+        <button
+          className="button"
+          onClick={onAddRule}
+          title="Wie viele einer Sorte, z. B. mind. 3 Gras oder keine Herz"
+        >
+          + Regel
+        </button>
+        <button className="button" onClick={onClose}>
+          Fertig
+        </button>
+      </div>
     </div>
   );
 }

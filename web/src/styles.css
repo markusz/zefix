@@ -639,46 +639,30 @@ details.extra textarea {
   stroke-width: 0.5;
 }
 
-.add-slot {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  min-width: 96px;
-  padding: 6px;
-  border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent);
-  border-radius: var(--radius-small);
-}
-
-.add-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 6px;
+/* Plain text actions next to the cards: no frame of their own inside the card. */
+/* An empty card place: one way in, for cards and rules alike. */
+.add-card {
+  display: grid;
+  place-items: center;
+  width: var(--card-w);
+  aspect-ratio: 34 / 48;
+  padding: 0;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 5px;
   background: none;
   color: var(--accent);
-  font-size: 13px;
-  font-weight: 500;
 }
 
-.add-button:hover,
-.add-button.active {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.add-card:hover,
+.add-card.active {
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-.mini-card {
-  width: 8px;
-  height: 11px;
-  border-radius: 1.5px;
-  border: 1.5px solid currentColor;
-}
-
-.mini-card.dotted {
-  border-style: dotted;
+.picker-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .editor {
