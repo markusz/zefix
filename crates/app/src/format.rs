@@ -2,6 +2,7 @@
 
 const THOUSANDS_GROUP: usize = 3;
 pub const PERCENT: f64 = 100.0;
+const PERCENT_DIGITS: usize = 2;
 
 pub fn decimal(x: f64, digits: usize) -> String {
     format!("{x:.digits$}").replace('.', ",")
@@ -20,7 +21,11 @@ pub fn int(n: u64) -> String {
 }
 
 pub fn percent(p: f64) -> String {
-    format!("{} %", decimal(PERCENT * p, 2))
+    percent_to(p, PERCENT_DIGITS)
+}
+
+pub fn percent_to(p: f64, digits: usize) -> String {
+    format!("{} %", decimal(PERCENT * p, digits))
 }
 
 #[cfg(test)]
@@ -32,5 +37,6 @@ mod tests {
         assert_eq!(int(10_000_000), "10.000.000");
         assert_eq!(int(42), "42");
         assert_eq!(percent(0.16478), "16,48 %");
+        assert_eq!(percent_to(0.16478, 1), "16,5 %");
     }
 }

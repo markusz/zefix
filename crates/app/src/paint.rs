@@ -95,6 +95,72 @@ pub fn suit_icon(ui: &mut Ui, suit: Suit) -> Response {
     response
 }
 
+/// Head and shoulders, as shares of the icon size.
+const HEAD_RADIUS: f32 = 0.2;
+const HEAD_CENTER: f32 = 0.3;
+const SHOULDER_RADIUS: f32 = 0.36;
+const SHOULDER_STEPS: usize = 12;
+
+/// A person at text height, in place of a "Wer:" label.
+pub fn person_icon(ui: &mut Ui) -> Response {
+    let size = ui.text_style_height(&egui::TextStyle::Body);
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), Sense::hover());
+    let color = ui.visuals().weak_text_color();
+    let painter = ui.painter();
+    let head = pos2(rect.center().x, rect.top() + HEAD_CENTER * size);
+    painter.circle_filled(head, HEAD_RADIUS * size, color);
+    let base = pos2(rect.center().x, rect.bottom());
+    let radius = SHOULDER_RADIUS * size;
+    let shoulders = (0..=SHOULDER_STEPS)
+        .map(|i| {
+            let angle = PI * i as f32 / SHOULDER_STEPS as f32;
+            base + vec2(-radius * angle.cos(), -radius * angle.sin())
+        })
+        .collect();
+    painter.add(egui::Shape::convex_polygon(shoulders, color, Stroke::NONE));
+    response
+}
+
+const ICON_STROKE: f32 = 1.5;
+/// Card height as a share of the icon size, and width as a share of the height.
+const ICON_CARD_HEIGHT: f32 = 0.8;
+const ICON_CARD_ASPECT: f32 = 0.68;
+const ICON_CARD_TILT: f32 = 0.35;
+const LENS_CENTER: f32 = 0.42;
+const LENS_RADIUS: f32 = 0.27;
+const HANDLE_END: f32 = 0.92;
+
+/// Two cards fanned as held in a hand, for the seats.
+pub fn cards_icon(painter: &Painter, rect: Rect, color: Color32, fill: Color32) {
+    let size = rect.height();
+    let card = vec2(ICON_CARD_HEIGHT * ICON_CARD_ASPECT, ICON_CARD_HEIGHT) * size;
+    let stroke = Stroke::new(ICON_STROKE, color);
+    // Both turn about the middle of their bottom edges, like a hand of cards.
+    let pivot = pos2(rect.center().x, rect.center().y + card.y / 2.0);
+    let outline = [
+        vec2(-0.5, -1.0),
+        vec2(0.5, -1.0),
+        vec2(0.5, 0.0),
+        vec2(-0.5, 0.0),
+    ];
+    for angle in [-ICON_CARD_TILT, ICON_CARD_TILT] {
+        let rot = egui::emath::Rot2::from_angle(angle);
+        let corners = outline.iter().map(|&c| pivot + rot * (c * card)).collect();
+        painter.add(Shape::convex_polygon(corners, fill, stroke));
+    }
+}
+
+/// A magnifying glass, for the queries.
+pub fn lens_icon(painter: &Painter, rect: Rect, color: Color32) {
+    let size = rect.height();
+    let stroke = Stroke::new(ICON_STROKE, color);
+    let center = rect.min + Vec2::splat(LENS_CENTER * size);
+    let radius = LENS_RADIUS * size;
+    painter.circle_stroke(center, radius, stroke);
+    let rim = center + Vec2::splat(radius * std::f32::consts::FRAC_1_SQRT_2);
+    painter.line_segment([rim, rect.min + Vec2::splat(HANDLE_END * size)], stroke);
+}
+
 /// Hand rows scale their cards to the available width, within these bounds.
 pub const MIN_HAND_SCALE: f32 = 1.2;
 pub const MAX_HAND_SCALE: f32 = 2.6;

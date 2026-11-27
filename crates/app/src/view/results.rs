@@ -12,6 +12,8 @@ use zefix_core::scenario::{ExprSite, ScenarioError};
 use zefix_core::stats::{self, QueryResult, ratio};
 
 const INLINE_PERCENT_SIZE: f32 = 16.0;
+/// Enough at a glance; the browser's short runs leave the second decimal noise anyway.
+const INLINE_PERCENT_DIGITS: usize = 1;
 const EXAMPLE_CARD_SCALE: f32 = 0.6;
 const EXAMPLE_LABEL_WIDTH: f32 = 150.0;
 /// Opacity of results that belong to an older model.
@@ -46,8 +48,8 @@ impl Inline {
             let row = egui::vec2(ui.available_width(), 0.0);
             let layout = egui::Layout::right_to_left(egui::Align::Center);
             ui.allocate_ui_with_layout(row, layout, |ui| {
-                let text =
-                    RichText::new(format::percent(result.estimate.p)).size(INLINE_PERCENT_SIZE);
+                let percent = format::percent_to(result.estimate.p, INLINE_PERCENT_DIGITS);
+                let text = RichText::new(percent).size(INLINE_PERCENT_SIZE);
                 theme::chip(ui, text, theme::accent(ui, Accent::Results));
             });
         });

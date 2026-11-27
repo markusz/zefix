@@ -91,14 +91,13 @@ impl ZefixApp {
 
 impl eframe::App for ZefixApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+        crate::keyboard::begin_frame(ui.ctx());
         let layout = Layout::for_width(ui.available_width());
         theme::set_density(ui, layout.density());
-        egui::Panel::top("settings")
-            .frame(theme::top_bar_frame(ui))
-            .show(ui, |ui| match layout {
-                Layout::Desktop => desktop::top_bar(self, ui),
-                Layout::Phone => phone::top_bar(self, ui),
-            });
+        match layout {
+            Layout::Desktop => desktop::top_bar(self, ui),
+            Layout::Phone => phone::top_bar(self, ui),
+        }
         let Some(game) = self.model.game.game() else {
             egui::CentralPanel::default().show(ui, |ui| {
                 ui.label("Ungültiges Spiel.");

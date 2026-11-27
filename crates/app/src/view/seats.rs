@@ -1,6 +1,7 @@
 //! One row per player in play order, holding the conditions on that player's hand.
 
 use super::tiles::{self, EditState, Target, TileRow};
+use crate::keyboard;
 use crate::model::{Model, Position};
 use crate::theme::{self, Accent};
 use eframe::egui::{self, RichText, TextEdit, Ui};
@@ -70,13 +71,14 @@ fn extra_condition(ui: &mut Ui, model: &mut Model, error: Option<&str>) {
         // Kept open while it holds something, so an imported condition is never hidden.
         .open((!model.filter_text.trim().is_empty() || error.is_some()).then_some(true))
         .show(ui, |ui| {
-            ui.add(
+            let field = ui.add(
                 TextEdit::multiline(&mut model.filter_text)
                     .code_editor()
                     .desired_rows(2)
                     .desired_width(f32::INFINITY)
                     .hint_text("z. B. left.frei(gras) or right.has(SO)"),
             );
+            keyboard::text_field(&field);
             if let Some(error) = error {
                 theme::inset(ui, |ui| {
                     ui.label(

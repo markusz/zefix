@@ -2,6 +2,7 @@
 
 mod app;
 mod format;
+mod keyboard;
 mod layout;
 mod model;
 mod paint;
@@ -67,6 +68,7 @@ async fn start_web() -> Result<(), String> {
         .ok_or("Zeichenfläche fehlt")?
         .dyn_into::<eframe::web_sys::HtmlCanvasElement>()
         .map_err(|_| "Zeichenfläche ist kein Canvas")?;
+    keyboard::install(&canvas).map_err(|e| format!("{e:?}"))?;
     eframe::WebRunner::new()
         .start(
             canvas,

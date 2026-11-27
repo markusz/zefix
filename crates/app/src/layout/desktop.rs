@@ -4,12 +4,19 @@ use super::controls::{self, brand, position_picker, run_settings};
 use crate::app::ZefixApp;
 use crate::model::GameSetup;
 use crate::paint;
+use crate::theme;
 use eframe::egui::{self, ScrollArea, Ui};
 use zefix_core::game::Game;
 
 const SEAT_PANEL_WIDTH: f32 = 760.0;
 
 pub fn top_bar(app: &mut ZefixApp, ui: &mut Ui) {
+    egui::Panel::top("settings")
+        .frame(theme::top_bar_frame(ui))
+        .show(ui, |ui| settings_row(app, ui));
+}
+
+fn settings_row(app: &mut ZefixApp, ui: &mut Ui) {
     ui.horizontal_wrapped(|ui| {
         brand(ui);
         ui.separator();

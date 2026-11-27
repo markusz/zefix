@@ -18,6 +18,8 @@ pub enum Accent {
 
 struct Tokens {
     panel: Color32,
+    /// The brand strip on phones: a cool tint, so the app's name reads as chrome.
+    brand: Color32,
     card: Color32,
     inset: Color32,
     border: Color32,
@@ -35,6 +37,7 @@ const COMPACT_CARD_MARGIN: i8 = 6;
 const DENSITY_KEY: &str = "zefix_density";
 const DARK: Tokens = Tokens {
     panel: Color32::from_rgb(0x14, 0x14, 0x13),
+    brand: Color32::from_rgb(0x1e, 0x22, 0x2b),
     card: Color32::from_rgb(0x22, 0x22, 0x20),
     inset: Color32::from_rgb(0x10, 0x10, 0x0f),
     border: Color32::from_rgb(0x3a, 0x39, 0x35),
@@ -48,6 +51,7 @@ const DARK: Tokens = Tokens {
 
 const LIGHT: Tokens = Tokens {
     panel: Color32::from_rgb(0xec, 0xeb, 0xe6),
+    brand: Color32::from_rgb(0xdc, 0xe3, 0xee),
     card: Color32::from_rgb(0xfc, 0xfc, 0xfb),
     inset: Color32::from_rgb(0xf3, 0xf2, 0xee),
     border: Color32::from_rgb(0xd6, 0xd4, 0xcc),
@@ -197,6 +201,18 @@ pub fn top_bar_frame(ui: &Ui) -> Frame {
     Frame::new()
         .fill(visuals.window_fill)
         .stroke(visuals.widgets.noninteractive.bg_stroke)
+        .inner_margin(Margin::symmetric(CARD_MARGIN, INSET_MARGIN))
+}
+
+/// Tinted strip for logo and name above the settings, where they have a row of their own.
+pub fn brand_bar_frame(ui: &Ui) -> Frame {
+    let tokens = if ui.visuals().dark_mode {
+        &DARK
+    } else {
+        &LIGHT
+    };
+    Frame::new()
+        .fill(tokens.brand)
         .inner_margin(Margin::symmetric(CARD_MARGIN, INSET_MARGIN))
 }
 

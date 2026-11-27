@@ -3,7 +3,9 @@
 use super::results::Inline;
 use super::seats::position_label;
 use super::tiles::{self, EditState, Target, TileRow};
+use crate::keyboard;
 use crate::model::{Model, OTHER_PLAYERS, Position, QueryMode, QueryModel, Scope};
+use crate::paint;
 use crate::theme::{self, Accent};
 use eframe::egui::{Color32, ComboBox, DragValue, RichText, TextEdit, Ui};
 use zefix_core::cards::Cards;
@@ -85,14 +87,17 @@ fn query_frame(
 ) -> RowAction {
     theme::card(ui, row.accent, |ui| {
         let action = title_bar(ui, query, game, row.index);
+        ui.separator();
         match query.mode {
             QueryMode::Visual => visual(ui, query, edit, game, &row),
             QueryMode::Text => {
-                ui.add(
-                    TextEdit::multiline(&mut query.text)
-                        .code_editor()
-                        .desired_rows(2)
-                        .desired_width(f32::INFINITY),
+                keyboard::text_field(
+                    &ui.add(
+                        TextEdit::multiline(&mut query.text)
+                            .code_editor()
+                            .desired_rows(2)
+                            .desired_width(f32::INFINITY),
+                    ),
                 );
             }
         }
@@ -117,7 +122,7 @@ fn title_bar(ui: &mut Ui, query: &mut QueryModel, game: &Game, index: usize) -> 
     ui.horizontal_wrapped(|ui| {
         // Leaves room for "Löschen" on the same line.
         let width = NAME_WIDTH.min(ui.available_width() - DELETE_WIDTH);
-        ui.add(TextEdit::singleline(&mut query.name).desired_width(width));
+        keyboard::text_field(&ui.add(TextEdit::singleline(&mut query.name).desired_width(width)));
         if theme::density(ui).shows_code() {
             mode_toggle(ui, query, game);
         }
@@ -152,7 +157,7 @@ fn visual(
     row: &QueryRow<'_>,
 ) {
     ui.horizontal(|ui| {
-        ui.label("Wer:");
+        paint::person_icon(ui).on_hover_text("Wer");
         scope_picker(ui, &mut query.scope, game, row);
     });
     let tiles_row = TileRow {
@@ -225,6 +230,6 @@ fn scope_picker(ui: &mut Ui, scope: &mut Scope, game: &Game, row: &QueryRow<'_>)
             }
         });
     if let Scope::AtLeast(k) = scope {
-        ui.add(DragValue::new(k).range(1..=OTHER_PLAYERS).prefix("k = "));
+        keyboard::text_field(&ui.add(DragValue::new(k).range(1..=OTHER_PLAYERS).prefix("k = ")));
     }
 }

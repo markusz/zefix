@@ -80,12 +80,13 @@ fn export(ui: &mut Ui, state: &mut ShareState, model: &Model, game: &Game) {
 
 fn import(ui: &mut Ui, state: &mut ShareState, model: &mut Model) {
     ui.label("Importieren: Link oder TOML einfügen.");
-    ui.add(
+    let field = ui.add(
         TextEdit::multiline(&mut state.import_text)
             .code_editor()
             .desired_rows(IMPORT_ROWS)
             .desired_width(f32::INFINITY),
     );
+    crate::keyboard::text_field(&field);
     let ready = !state.import_text.trim().is_empty();
     if ui
         .add_enabled(ready, egui::Button::new("Übernehmen"))
