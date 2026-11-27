@@ -59,9 +59,7 @@ export function Segmented<T extends string>({
 }
 
 const PERCENT = new Intl.NumberFormat("de-DE", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const INTEGER = new Intl.NumberFormat("de-DE");
 
 export const format = {
   percent: (p: number) => PERCENT.format(p),
-  int: (n: number) => INTEGER.format(n),
 };

@@ -142,6 +142,19 @@ button:disabled {
   color: var(--on-accent);
 }
 
+/* The main action of a panel, in the colour of the area it belongs to. */
+.button.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.button.accent:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
 .button.danger {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 45%, transparent);
@@ -586,18 +599,11 @@ details.extra textarea {
   stroke-width: 1.2;
 }
 
+/* Rules are conditions, not cards: a tinted plate in the area's colour, the count below. */
 .rule-paper {
-  fill: color-mix(in srgb, var(--card-paper) 80%, transparent);
-  stroke: var(--card-ink);
-  stroke-width: 1.2;
-  stroke-dasharray: 0.1 2.6;
-  stroke-linecap: round;
-}
-
-@media (prefers-color-scheme: dark) {
-  .rule-paper {
-    stroke: var(--text);
-  }
+  fill: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  stroke: color-mix(in srgb, var(--accent) 70%, transparent);
+  stroke-width: 1.4;
 }
 
 .card-rank {
@@ -612,14 +618,14 @@ details.extra textarea {
   stroke-linecap: round;
 }
 
-.badge {
+.rule-count {
   fill: var(--accent);
+  font-family: var(--font);
+  font-weight: 800;
 }
 
-.badge-text {
-  fill: var(--on-accent);
-  font-family: var(--font);
-  font-weight: 700;
+.rule-rank {
+  fill: var(--text);
 }
 
 .crown-body {
@@ -661,7 +667,32 @@ details.extra textarea {
 
 .picker-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Cards close together, one row per suit. */
+.card-matrix {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 36px));
+  gap: 4px;
+  align-items: center;
+}
+
+.tile.matrix-card {
+  width: auto;
+}
+
+.draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
@@ -695,24 +726,16 @@ details.extra textarea {
   gap: 8px;
 }
 
-.picker-label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.picker-cards {
+.picker-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  align-items: center;
+  gap: 8px 12px;
 }
 
-.tile.small {
-  width: 34px;
-}
-
-.tile:disabled {
+.tile.taken {
   opacity: 0.3;
+  filter: grayscale(1);
 }
 
 /* Queries */

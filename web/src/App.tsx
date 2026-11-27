@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { core } from "./core";
-import type { Report } from "./core";
 import { isDesktop, useSimulation } from "./engine";
 import type { Run } from "./engine";
 import type { Model } from "./model";
@@ -16,7 +15,6 @@ import { Seats } from "./components/Seats";
 import { ShareDialog } from "./components/Share";
 import { EditContext } from "./components/TileRow";
 import type { EditState } from "./components/TileRow";
-import { format } from "./components/Controls";
 
 /** About ±0,1 percentage points natively; the browser simulates on one core, so ±0,3 there. */
 const DEFAULT_ITERATIONS = isDesktop() ? 1_000_000 : 100_000;
@@ -107,7 +105,7 @@ export function App() {
                   Zahl ist der Anteil der Blätter, auf die die Frage zutrifft.
                 </Hint>
               </span>
-              <Status run={run} iterations={iterations} />
+              <Status run={run} />
             </div>
             <Queries model={model} setModel={setModel} info={info.ok} compiled={compiled} problem={problem} run={run} />
             <div className="phone-only phone-settings">
@@ -131,7 +129,7 @@ export function App() {
   );
 }
 
-function Status({ run, iterations }: { run: Run; iterations: number }) {
+function Status({ run }: { run: Run }) {
   const { status } = run;
   switch (status.kind) {
     case "running":
@@ -146,17 +144,7 @@ function Status({ run, iterations }: { run: Run; iterations: number }) {
         </div>
       );
     case "finished":
-      return run.report ? (
-        <p className="status muted small-text desktop-only">
-          {summary(run.report, iterations)}
-          {run.report.attempts !== run.report.accepted && (
-            <Hint>
-              Nicht jedes gemischte Blatt passt zu deinen Angaben oder zur Rufregel; solche Blätter
-              werden verworfen. „Davon passend“ ist der Anteil, der übrig bleibt.
-            </Hint>
-          )}
-        </p>
-      ) : null;
+      return null;
     case "stopped":
       return (
         <p className="status muted small-text">
@@ -181,12 +169,4 @@ function Status({ run, iterations }: { run: Run; iterations: number }) {
       return <p className="status error-text">{text}</p>;
     }
   }
-}
-
-function summary(report: Report, iterations: number): string {
-  let text = `${format.int(report.accepted)} von ${format.int(iterations)} Blättern gemischt`;
-  if (report.attempts !== report.accepted) {
-    text += ` · davon passend ${format.percent(report.accepted / report.attempts)}`;
-  }
-  return text;
 }

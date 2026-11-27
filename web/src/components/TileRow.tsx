@@ -1,13 +1,14 @@
 // A row of tiles (fixed cards and count rules) with its editor and card picker. Seats and
 // visual queries use the same row.
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import type { GameInfo } from "../core";
-import type { Card, CardSet, CountOp, Tile } from "../model";
+import type { Card, CardSet, CountOp, Suit, Tile } from "../model";
 import {
   CARD_SETS,
   COUNT_KINDS,
   HAND_SIZE,
+  SUITS,
   cardsOf,
   clampOp,
   countKind,
@@ -19,7 +20,7 @@ import {
   withKind,
 } from "../model";
 import { CardFace, RuleFace, cardName } from "./Cards";
-import { Stepper } from "./Controls";
+import { Segmented, Stepper } from "./Controls";
 import { PlusIcon } from "./Icons";
 
 /** Which tile is being edited and which row has its card picker open; one of each at most. */
@@ -54,11 +55,7 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
 
   const select = (index: number) =>
     setEdit({ ...edit, selected: selected === index ? null : { row, index } });
-  const addRule = () => {
-    onChange([...tiles, { Count: { set: "Trumpf", op: { AtLeast: 1 } } }]);
-    // The new rule opens in its editor; the picker makes room for it.
-    setEdit({ picker: null, selected: { row, index: tiles.length } });
-  };
+  const addRule = (set: CardSet, op: CountOp) => onChange([...tiles, { Count: { set, op } }]);
   const toggle = (card: Card) => {
     onChange(toggleCard(tiles, card, info.order));
     // Toggling reorders the tiles, so a selected index would point elsewhere.
@@ -83,14 +80,17 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
             )}
           </button>
         ))}
-        <button
-          className={`add-card ${pickerOpen ? "active" : ""}`}
-          onClick={() => setEdit({ selected: null, picker: pickerOpen ? null : row })}
-          aria-expanded={pickerOpen}
-          title="Karte oder Regel hinzufügen"
-        >
-          <PlusIcon size={20} />
-        </button>
+        {/* A full hand leaves nothing to add; its cards are removed from their own editor. */}
+        {fixed.length < HAND_SIZE && (
+          <button
+            className={`add-card ${pickerOpen ? "active" : ""}`}
+            onClick={() => setEdit({ selected: null, picker: pickerOpen ? null : row })}
+            aria-expanded={pickerOpen}
+            title="Karte oder Regel hinzufügen"
+          >
+            <PlusIcon size={20} />
+          </button>
+        )}
       </div>
       {tile && selected !== null && (
         <TileEditor
@@ -109,8 +109,8 @@ export function TileRow({ row, tiles, onChange, info, blocked = new Set(), accen
         <CardPicker
           held={fixed}
           blocked={blocked}
-          info={info}
           onToggle={toggle}
+          cap={(set) => ruleCap(set, fixed, info)}
           onAddRule={addRule}
           onClose={() => setEdit({ ...edit, picker: null })}
         />
@@ -247,41 +247,58 @@ function RuleEditor({
   );
 }
 
+const RANKS = ["O", "U", "A", "10", "K", "9", "8", "7"];
+const SUIT_LETTER: Record<Suit, string> = { eichel: "E", gras: "G", herz: "H", schellen: "S" };
+
+type AddMode = "card" | "rule";
+
+/** One way in, switched between picking cards (one row per suit) and building a rule. */
 function CardPicker({
   held,
   blocked,
-  info,
+  cap,
   onToggle,
   onAddRule,
   onClose,
 }: {
   held: Card[];
   blocked: Set<Card>;
-  info: GameInfo;
+  cap: (set: CardSet) => number;
   onToggle: (card: Card) => void;
-  onAddRule: () => void;
+  onAddRule: (set: CardSet, op: CountOp) => void;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<AddMode>("card");
   const full = held.length >= HAND_SIZE;
-  let hint = `${held.length} von ${HAND_SIZE} Karten festgelegt`;
-  if (full) hint += " · Hand voll";
-  else if (blocked.size > 0) hint += " · ausgegraut: liegt bei einem anderen Spieler";
   return (
     <div className="panel picker">
-      {info.groups.map((group) => (
-        <div key={group.label} className="picker-group">
-          <div className="picker-label">{group.label}</div>
-          <div className="picker-cards">
-            {group.cards.map((card) => {
+      <div className="picker-head">
+        <Segmented
+          label="Hinzufügen"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "card", label: "Karte", title: "Eine bestimmte Karte, z. B. der Gras-Ober" },
+            { value: "rule", label: "Regel", title: "Wie viele einer Sorte, z. B. mind. 3 Trumpf oder keine Herz" },
+          ]}
+        />
+      </div>
+      {mode === "card" ? (
+      <div className="card-matrix">
+        {SUITS.map((suit) => (
+          <div key={suit} className="matrix-row">
+            {RANKS.map((rank) => {
+              const card = `${SUIT_LETTER[suit]}${rank}`;
               const isHeld = held.includes(card);
-              const unavailable = !isHeld && (blocked.has(card) || full);
+              // Grey means taken: by this hand (tap to put it back) or by another seat.
+              const taken = isHeld || blocked.has(card);
               return (
                 <button
                   key={card}
-                  className={`tile tile-card small ${isHeld ? "selected" : ""}`}
-                  disabled={unavailable}
+                  className={`tile tile-card matrix-card ${taken ? "taken" : ""}`}
+                  disabled={!isHeld && (blocked.has(card) || full)}
                   onClick={() => onToggle(card)}
-                  title={cardName(card)}
+                  title={isHeld ? `${cardName(card)} · zurücklegen` : blocked.has(card) ? `${cardName(card)} · liegt bei einem anderen Spieler` : cardName(card)}
                   aria-pressed={isHeld}
                 >
                   <CardFace card={card} />
@@ -289,21 +306,34 @@ function CardPicker({
               );
             })}
           </div>
-        </div>
-      ))}
-      <div className="muted small-text">{hint}</div>
+        ))}
+      </div>
+      ) : (
+        <DraftRule cap={cap} onAdd={onAddRule} />
+      )}
       <div className="picker-actions">
-        <button
-          className="button"
-          onClick={onAddRule}
-          title="Wie viele einer Sorte, z. B. mind. 3 Gras oder keine Herz"
-        >
-          + Regel
-        </button>
         <button className="button" onClick={onClose}>
           Fertig
         </button>
       </div>
+    </div>
+  );
+}
+
+/** "[Trumpf ▾] [mindestens ▾] [− 2 +] Hinzufügen", added as a new rule tile. */
+function DraftRule({ cap, onAdd }: { cap: (set: CardSet) => number; onAdd: (set: CardSet, op: CountOp) => void }) {
+  const [draft, setDraft] = useState<{ set: CardSet; op: CountOp }>({ set: "Trumpf", op: { AtLeast: 2 } });
+  return (
+    <div className="draft">
+      <RuleEditor
+        set={draft.set}
+        op={draft.op}
+        cap={cap}
+        onChange={(set, op) => setDraft({ set, op })}
+      />
+      <button className="button accent" onClick={() => onAdd(draft.set, draft.op)}>
+        <PlusIcon size={16} /> Hinzufügen
+      </button>
     </div>
   );
 }

@@ -65,16 +65,6 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
-    q: "Was heißt „davon passend“?",
-    a: (
-      <>
-        Nicht jedes gemischte Blatt passt zu deinen Angaben oder zur Rufregel. Solche Blätter werden
-        verworfen; „davon passend“ ist der Anteil, der übrig bleibt. Ist er sehr klein, rechnet zefix!
-        länger.
-      </>
-    ),
-  },
-  {
     q: "Was kann ich als Text schreiben?",
     a: (
       <>

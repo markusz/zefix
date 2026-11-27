@@ -99,7 +99,7 @@ function Symbol({ symbol }: { symbol: RuleSymbol }) {
     case "rank":
       return (
         <>
-          <text className="card-rank" x={17} y={19} textAnchor="middle" fontSize={15}>
+          <text className="card-rank rule-rank" x={17} y={19} textAnchor="middle" fontSize={15}>
             {symbol.symbol}
           </text>
           {ALL_SUITS.map((suit, i) => (
@@ -139,16 +139,14 @@ function Crown() {
 }
 
 export function RuleFace({ set, op, plainSuits }: { set: CardSet; op: CountOp; plainSuits: Suit[] }) {
-  const badge = opBadge(op);
-  const badgeWidth = Math.max(12, badge.length * 5 + 6);
+  const count = opBadge(op);
   return (
     <svg className="card-svg" viewBox="0 0 34 48" aria-hidden>
       <rect className="rule-paper" x={0.75} y={0.75} width={32.5} height={46.5} rx={3.5} />
       <Symbol symbol={ruleSymbol(set, plainSuits)} />
       {isNegation(op) && <line className="strike" x1={5} y1={6} x2={29} y2={29} />}
-      <rect className="badge" x={17 - badgeWidth / 2} y={34} width={badgeWidth} height={9} rx={4.5} />
-      <text className="badge-text" x={17} y={41} textAnchor="middle" fontSize={7}>
-        {badge}
+      <text className="rule-count" x={17} y={44} textAnchor="middle" fontSize={count.length > 2 ? 10 : 12}>
+        {count}
       </text>
     </svg>
   );
