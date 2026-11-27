@@ -2,6 +2,7 @@
 
 mod app;
 mod format;
+mod layout;
 mod model;
 mod paint;
 mod runner;
