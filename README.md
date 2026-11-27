@@ -25,7 +25,7 @@ Lokal starten: `cargo run --release -p zefix-app`
 
 ## Kommandozeile
 
-Für Szenarien als Datei, Skripte oder Batch-Läufe. Eine TOML-Datei legt Szenario und Abfragen fest; Beispiele liegen in [`scenarios/`](scenarios).
+Für Szenarien als Datei, Skripte oder Batch-Läufe. Eine TOML-Datei legt Szenario und Abfragen fest. Typische Situationen und wie man sie ausdrückt: [`docs/beispiele.md`](docs/beispiele.md); weitere Szenarien in [`scenarios/`](scenarios).
 
 ```
 $ cargo install --path crates/cli

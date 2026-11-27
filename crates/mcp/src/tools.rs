@@ -16,6 +16,8 @@ const DEFAULT_SEED: u64 = 42;
 const README: &str = include_str!("../../../README.md");
 const REFERENCE_START: &str = "### Config";
 const REFERENCE_END: &str = "## Entwicklung";
+/// Worked examples teach an assistant the idioms faster than the grammar alone.
+const EXAMPLES: &str = include_str!("../../../docs/beispiele.md");
 
 #[derive(Serialize, Debug)]
 pub struct Report {
@@ -57,10 +59,11 @@ fn load(toml_text: &str) -> Result<Loaded, String> {
     })
 }
 
-pub fn reference() -> &'static str {
+pub fn reference() -> String {
     let start = README.find(REFERENCE_START).unwrap_or(0);
     let end = README.find(REFERENCE_END).unwrap_or(README.len());
-    README.get(start..end).unwrap_or(README)
+    let docs = README.get(start..end).unwrap_or(README);
+    format!("{docs}\n{EXAMPLES}")
 }
 
 pub fn check(toml_text: &str) -> Result<String, String> {
@@ -121,6 +124,7 @@ mod tests {
         assert!(r.starts_with(REFERENCE_START));
         assert!(r.contains("## Abfragesprache"));
         assert!(!r.contains(REFERENCE_END));
+        assert!(r.contains("# Beispiele"));
     }
 
     #[test]
@@ -151,6 +155,19 @@ mod tests {
         assert!(err.contains("trumf"), "{err}");
         let broken = check("[game]\ntype = ").err().unwrap_or_default();
         assert!(broken.contains("line 2"), "{broken}");
+    }
+
+    #[test]
+    fn examples_are_valid_scenarios() {
+        let blocks: Vec<&str> = EXAMPLES
+            .split("```toml\n")
+            .skip(1)
+            .filter_map(|rest| rest.split("```").next())
+            .collect();
+        assert!(blocks.len() >= 8, "{}", blocks.len());
+        for block in blocks {
+            assert!(check(block).is_ok(), "{block}\n{:?}", check(block));
+        }
     }
 
     #[test]

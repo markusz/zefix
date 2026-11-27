@@ -40,10 +40,10 @@ pub struct Zefix;
 #[tool_router]
 impl Zefix {
     #[tool(
-        description = "Documentation of the TOML scenario format and the query language (German). Read it before writing a scenario."
+        description = "Documentation of the TOML scenario format and the query language (German), with worked examples. Read it before writing a scenario."
     )]
     async fn reference(&self) -> String {
-        tools::reference().to_owned()
+        tools::reference()
     }
 
     #[tool(
