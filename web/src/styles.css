@@ -256,17 +256,114 @@ textarea.code {
 
 /* Top bar */
 
+/* The brand alone on a tinted strip; the settings get their own row below it. */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-strip {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
   padding: 10px 20px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border);
+  background: var(--brand-strip);
+}
+
+.help-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--muted);
+}
+
+.help-button:hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text);
+}
+
+/* Info buttons and their bubbles */
+
+.hint {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.hint-button {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 2px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  font: italic 600 11px/1 Georgia, serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hint-button:hover,
+.hint-button[aria-expanded="true"] {
+  border-color: var(--queries);
+  color: var(--queries);
+}
+
+.hint-bubble {
+  position: fixed;
+  z-index: 100;
+  width: max-content;
+  padding: 8px 10px;
+  border-radius: var(--radius-small);
+  background: var(--text);
+  color: var(--bg);
+  font: 400 13px/1.45 var(--font);
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+
+/* FAQ */
+
+.help {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(80vh, 760px);
+}
+
+.faq {
+  border-top: 1px solid var(--border);
+}
+
+.dialog .faq > summary {
+  color: var(--text);
+  font-size: 15px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.faq > p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.faq a {
+  color: var(--queries);
+}
+
+.faq code {
+  font: 12.5px var(--mono);
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--inset);
 }
 
 .brand {
@@ -284,12 +381,23 @@ textarea.code {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 18px;
-  flex: 1;
+  padding: 10px 20px;
   min-width: 0;
 }
 
 .push-right {
   margin-left: auto;
+}
+
+/* Game, position and run length are separate decisions; a rule between them says so. */
+.setting {
+  display: inline-flex;
+  align-items: center;
+}
+
+.setting + .setting {
+  padding-left: 18px;
+  border-left: 1px solid var(--border-strong);
 }
 
 .labeled {
@@ -676,19 +784,21 @@ details.extra textarea {
   font-weight: 500;
 }
 
+/* Examples on the left, the probability on the right of the same row. */
 .result {
-  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.result .examples {
+  flex: 1;
+  min-width: 0;
 }
 
 .result.stale {
   opacity: 0.45;
-}
-
-.result-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .percent {
@@ -860,23 +970,19 @@ details.extra textarea {
     display: none !important;
   }
 
-  .topbar {
-    position: static;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    background: var(--surface);
-  }
-
   .brand-strip {
     padding: 10px 16px;
-    background: var(--brand-strip);
   }
 
   .controls {
     padding: 10px 16px;
     gap: 10px 14px;
+  }
+
+  /* Each setting has its own row here, so the rows separate them. */
+  .setting + .setting {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .suit-name {

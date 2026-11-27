@@ -66,3 +66,10 @@ export const CloseIcon = (p: Props) => (
     <path d="M6 6l12 12M18 6L6 18" />
   </Svg>
 );
+
+export const HelpIcon = (p: Props) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01" />
+  </Svg>
+);

@@ -3,6 +3,7 @@
 import type { Compiled, GameInfo, Problem } from "../core";
 import type { Model, Tile } from "../model";
 import { POSITIONS, SEATS, cardsElsewhere, seatAt, seatName } from "../model";
+import { Hint } from "./Hint";
 import { TileRow } from "./TileRow";
 
 interface Props {
@@ -41,7 +42,13 @@ export function Seats({ model, setModel, info, compiled, problem }: Props) {
         );
       })}
       <details className={`extra ${hasCondition ? "" : "code-only"}`} open={hasCondition || undefined}>
-        <summary>Weitere Bedingung</summary>
+        <summary>
+          Weitere Bedingung{" "}
+          <Hint>
+            Für alles, was Karten und Regeln nicht ausdrücken, etwa ein „oder“, in der Abfragesprache.
+            Nur Blätter, die sie erfüllen, zählen.
+          </Hint>
+        </summary>
         <textarea
           className="code"
           rows={2}

@@ -4,7 +4,8 @@ import type { GameChoice, GameSetup, Model, Position } from "../model";
 import { GAMES, POSITIONS, SUIT_NAMES, gameSuits, normalizeGame, suitLabel } from "../model";
 import { SuitIcon } from "./Cards";
 import { Segmented } from "./Controls";
-import { ShareIcon } from "./Icons";
+import { Hint } from "./Hint";
+import { HelpIcon, ShareIcon } from "./Icons";
 
 /** A run length named by what it buys: how precise the numbers get. */
 export const PRECISIONS = [
@@ -14,12 +15,17 @@ export const PRECISIONS = [
   { name: "Genau", iterations: 10_000_000 },
 ];
 
-export function Brand() {
+export function Brand({ onHelp }: { onHelp: () => void }) {
   return (
-    <span className="brand">
-      <img src={`${import.meta.env.BASE_URL}logo/zefix.svg`} alt="" width={28} height={28} />
-      zefix!
-    </span>
+    <>
+      <span className="brand">
+        <img src={`${import.meta.env.BASE_URL}logo/zefix.svg`} alt="" width={28} height={28} />
+        zefix!
+      </span>
+      <button className="help-button" onClick={onHelp}>
+        <HelpIcon size={18} /> Hilfe
+      </button>
+    </>
   );
 }
 
@@ -27,6 +33,11 @@ export function GamePicker({ game, onChange }: { game: GameSetup; onChange: (gam
   const suits = gameSuits(game.choice);
   return (
     <span className="game-picker">
+      <span className="muted">Spiel</span>
+      <Hint>
+        Im Sauspiel wählst du die Sau, die du rufst; wer sie hat, spielt mit dir. In Solo, Farbwenz
+        und Farbgeier wählst du die Trumpffarbe.
+      </Hint>
       <select
         className="select"
         aria-label="Spiel"
@@ -62,12 +73,16 @@ export function GamePicker({ game, onChange }: { game: GameSetup; onChange: (gam
 
 export function PositionPicker({ model, onChange }: { model: Model; onChange: (position: Position) => void }) {
   return (
-    <span className="labeled" title="Position in der Spielreihenfolge; 1. = Vorhand">
+    <span className="labeled">
       <span className="muted">Position</span>
+      <Hint>
+        Deine Stelle in der Spielreihenfolge. 1 ist Vorhand und spielt als Erstes aus; danach geht es
+        im Uhrzeigersinn weiter, also erst zu dem Spieler links von dir.
+      </Hint>
       <Segmented
         label="Position"
         value={model.my_position}
-        options={POSITIONS.map((p, i) => ({ value: p, label: `${i + 1}.` }))}
+        options={POSITIONS.map((p, i) => ({ value: p, label: `${i + 1}` }))}
         onChange={onChange}
       />
     </span>
@@ -78,6 +93,10 @@ export function PrecisionPicker({ iterations, onChange }: { iterations: number; 
   return (
     <span className="labeled">
       <span className="muted">Genauigkeit</span>
+      <Hint>
+        Wie viele passende Blätter gemischt werden. Mehr Blätter, engeres Intervall: Schnell (100.000)
+        liegt höchstens etwa 0,3 Prozentpunkte daneben, Normal (1 Mio.) 0,1.
+      </Hint>
       <select
         className="select"
         aria-label="Genauigkeit"

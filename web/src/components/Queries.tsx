@@ -19,6 +19,7 @@ import {
 import { CardFace } from "./Cards";
 import { Segmented, Stepper, format } from "./Controls";
 import { PersonIcon, PlusIcon, TrashIcon } from "./Icons";
+import { Hint } from "./Hint";
 import { EditContext, TileRow } from "./TileRow";
 
 interface Props {
@@ -125,7 +126,10 @@ function QueryCard({ index, query, model, info, expr, error, result, stale, onCh
             accent="queries"
           />
           {expr ? (
-            <pre className="code-box code-only">{expr}</pre>
+            <details className="extra code-only">
+              <summary>Als Abfragetext</summary>
+              <pre className="code-box">{expr}</pre>
+            </details>
           ) : (
             <p className="muted small-text">Noch leer: Karten oder eine Regel hinzufügen.</p>
           )}
@@ -172,6 +176,10 @@ function ScopePicker({
           </option>
         ))}
       </select>
+      <Hint label="Wer?">
+        Über wen die Abfrage spricht. „Irgendein“ heißt: mindestens einer erfüllt alle Bausteine.
+        „Beide“ oder „alle“: jeder von ihnen. Mitspieler und Gegner gibt es nur im Sauspiel.
+      </Hint>
       {typeof scope !== "string" && "AtLeast" in scope && (
         <Stepper
           value={scope.AtLeast}
@@ -188,12 +196,6 @@ function ScopePicker({
 function Result({ result, stale, model }: { result: QueryResult; stale: boolean; model: Model }) {
   return (
     <footer className={`result ${stale ? "stale" : ""}`}>
-      <div className="result-row">
-        <span className="result-detail muted small-text">
-          ± {format.points(result.margin)} Punkte · {format.int(result.hits)} Treffer
-        </span>
-        <span className="percent">{format.percent(result.p)}</span>
-      </div>
       {result.examples.length > 0 && (
         <details className="examples code-only">
           <summary>Beispiele</summary>
@@ -220,6 +222,7 @@ function Result({ result, stale, model }: { result: QueryResult; stale: boolean;
           ))}
         </details>
       )}
+      <span className="percent">{format.percent(result.p)}</span>
     </footer>
   );
 }

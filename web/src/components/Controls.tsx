@@ -59,14 +59,9 @@ export function Segmented<T extends string>({
 }
 
 const PERCENT = new Intl.NumberFormat("de-DE", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const PERCENT_FINE = new Intl.NumberFormat("de-DE", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const INTEGER = new Intl.NumberFormat("de-DE");
-const POINTS = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const format = {
   percent: (p: number) => PERCENT.format(p),
-  percentFine: (p: number) => PERCENT_FINE.format(p),
   int: (n: number) => INTEGER.format(n),
-  /** A share as percentage points, e.g. the margin of an estimate. */
-  points: (p: number) => POINTS.format(p * 100),
 };

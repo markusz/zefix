@@ -8,6 +8,8 @@ import { isDesktop, useSimulation } from "./engine";
 import type { Run } from "./engine";
 import type { Model } from "./model";
 import { Brand, GamePicker, PositionPicker, PrecisionPicker, ShareButton } from "./components/Header";
+import { HelpDialog } from "./components/Help";
+import { Hint } from "./components/Hint";
 import { HandIcon, LensIcon } from "./components/Icons";
 import { Queries } from "./components/Queries";
 import { Seats } from "./components/Seats";
@@ -36,6 +38,7 @@ export function App() {
   const [edit, setEdit] = useState<EditState>({ selected: null, picker: null });
   const [tab, setTab] = useState<Tab>("seats");
   const [sharing, setSharing] = useState(initial.linkError !== undefined);
+  const [helping, setHelping] = useState(false);
 
   const info = useMemo(() => core.gameInfo(model.game), [model.game]);
   const compiled = useMemo(() => {
@@ -59,12 +62,16 @@ export function App() {
       <div className="app" data-tab={tab}>
         <header className="topbar">
           <div className="brand-strip">
-            <Brand />
+            <Brand onHelp={() => setHelping(true)} />
           </div>
           <div className="controls">
-            <GamePicker game={model.game} onChange={(game) => setModel({ ...model, game })} />
-            <PositionPicker model={model} onChange={(my_position) => setModel({ ...model, my_position })} />
-            <span className="desktop-only">
+            <span className="setting">
+              <GamePicker game={model.game} onChange={(game) => setModel({ ...model, game })} />
+            </span>
+            <span className="setting">
+              <PositionPicker model={model} onChange={(my_position) => setModel({ ...model, my_position })} />
+            </span>
+            <span className="setting desktop-only">
               <PrecisionPicker iterations={iterations} onChange={setIterations} />
             </span>
             <span className="desktop-only push-right">
@@ -83,17 +90,23 @@ export function App() {
         <main className="columns">
           <div className="column column-seats">
             <div className="section-head desktop-only">
-              <h2 className="section-title" title="Was über die Hände bekannt ist oder angenommen wird. Leere Hände sind zufällig.">
-                Blätter
-              </h2>
+              <h2 className="section-title">Blätter</h2>
+              <Hint>
+                Was du über die Hände weißt oder annimmst. Eine Karte liegt fest; eine Regel sagt, wie
+                viele einer Sorte es sind. Hände ohne Angaben werden zufällig gemischt.
+              </Hint>
             </div>
             <Seats model={model} setModel={setModel} info={info.ok} compiled={compiled} problem={problem} />
           </div>
           <div className="column column-queries">
             <div className="section-head">
-              <h2 className="section-title desktop-only" title="Wie wahrscheinlich ist …">
-                Abfragen
-              </h2>
+              <h2 className="section-title desktop-only">Abfragen</h2>
+              <span className="desktop-only">
+                <Hint>
+                  Fragen an jedes gemischte Blatt, z. B. „Hat ein Gegner mindestens vier Trumpf?“. Die
+                  Zahl ist der Anteil der Blätter, auf die die Frage zutrifft.
+                </Hint>
+              </span>
               <Status run={run} iterations={iterations} />
             </div>
             <Queries model={model} setModel={setModel} info={info.ok} compiled={compiled} problem={problem} run={run} />
@@ -102,6 +115,7 @@ export function App() {
             </div>
           </div>
         </main>
+        <HelpDialog open={helping} onClose={() => setHelping(false)} />
         <ShareDialog
           open={sharing}
           model={model}
@@ -132,7 +146,17 @@ function Status({ run, iterations }: { run: Run; iterations: number }) {
         </div>
       );
     case "finished":
-      return run.report ? <p className="status muted small-text desktop-only">{summary(run.report, iterations)}</p> : null;
+      return run.report ? (
+        <p className="status muted small-text desktop-only">
+          {summary(run.report, iterations)}
+          {run.report.attempts !== run.report.accepted && (
+            <Hint>
+              Nicht jedes gemischte Blatt passt zu deinen Angaben oder zur Rufregel; solche Blätter
+              werden verworfen. „Davon passend“ ist der Anteil, der übrig bleibt.
+            </Hint>
+          )}
+        </p>
+      ) : null;
     case "stopped":
       return (
         <p className="status muted small-text">
