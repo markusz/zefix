@@ -1,6 +1,7 @@
 //! The scenario as the UI edits it: tiles per seat and per query. Compiles to a core
 //! `Config` via query-language text, so the UI and the TOML files share one semantics.
 
+use serde::{Deserialize, Serialize};
 use zefix_core::cards::{Card, Cards, Suit};
 use zefix_core::game::{Game, GameKind, PLAYER_COUNT, Seat};
 use zefix_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig};
@@ -8,7 +9,7 @@ use zefix_core::scenario::{Config, HAND_SIZE, MeConfig, QueryConfig, TableConfig
 /// Upper bound for "at least k other players".
 pub const OTHER_PLAYERS: u8 = (PLAYER_COUNT - 1) as u8;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameChoice {
     Sauspiel,
     Solo,
@@ -57,7 +58,7 @@ impl GameChoice {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameSetup {
     pub choice: GameChoice,
     pub suit: Suit,
@@ -92,7 +93,7 @@ impl GameSetup {
 }
 
 /// Position in play order; the first position is Vorhand.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Position {
     First,
     Second,
@@ -122,7 +123,7 @@ impl Position {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardSet {
     Trumpf,
     Farbe,
@@ -196,7 +197,7 @@ pub fn rule_cap(set: CardSet, fixed: Cards, game: &Game) -> u8 {
 }
 
 /// The comparison a count tile makes; the editor's dropdown picks the kind.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CountOp {
     AtLeast(u8),
     AtMost(u8),
@@ -335,9 +336,9 @@ impl CountOp {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
-    Card(Card),
+    Card(#[serde(with = "card_text")] Card),
     Count { set: CardSet, op: CountOp },
 }
 
@@ -380,7 +381,7 @@ pub fn condition(subject: &str, tiles: &[Tile], game: &Game, mode: FixedCards) -
 }
 
 /// Who a visual query talks about.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Scope {
     Player(Seat),
     /// Sauspiel only: whoever holds the called Sau.
@@ -393,13 +394,13 @@ pub enum Scope {
     AllOpponents,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QueryMode {
     Visual,
     Text,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct QueryModel {
     pub name: String,
     pub mode: QueryMode,
@@ -456,18 +457,21 @@ impl QueryModel {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SeatModel {
     pub tiles: Vec<Tile>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Model {
     pub game: GameSetup,
     pub my_position: Position,
     /// Indexed by `Seat::index`, so my hand stays mine when I change position.
     pub seats: [SeatModel; PLAYER_COUNT],
     pub queries: Vec<QueryModel>,
+    /// Further condition on the deal in query-language text, e.g. from an imported TOML.
+    #[serde(default)]
+    pub filter_text: String,
 }
 
 impl Default for Model {
@@ -487,6 +491,7 @@ impl Default for Model {
                     op: CountOp::AtLeast(4),
                 }],
             )],
+            filter_text: String::new(),
         }
     }
 }
@@ -543,9 +548,10 @@ impl Model {
         }
     }
 
-    /// Constraints on all seats except my fixed cards, which are dealt directly.
+    /// Constraints on all seats except my fixed cards, which are dealt directly, plus the
+    /// text condition.
     pub fn filter(&self, game: &Game) -> Option<String> {
-        let parts: Vec<String> = Seat::ALL
+        let mut parts: Vec<String> = Seat::ALL
             .iter()
             .filter_map(|&seat| {
                 let mode = match seat {
@@ -555,6 +561,15 @@ impl Model {
                 condition(seat.name(), &self.seat(seat).tiles, game, mode)
             })
             .collect();
+        let text = self.filter_text.trim();
+        if !text.is_empty() {
+            // Seat conditions are plain conjunctions; only free text can hold an `or`.
+            parts.push(if parts.is_empty() {
+                text.to_string()
+            } else {
+                format!("({text})")
+            });
+        }
         (!parts.is_empty()).then(|| parts.join(" and "))
     }
 }
@@ -582,6 +597,21 @@ impl Spec {
                 })
                 .collect(),
         }
+    }
+}
+
+/// Cards as their short names (`EO`, `S10`) in serialized models.
+mod card_text {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+    use zefix_core::cards::Card;
+
+    pub fn serialize<S: Serializer>(card: &Card, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(card)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Card, D::Error> {
+        let text = String::deserialize(d)?;
+        Card::parse(&text).ok_or_else(|| D::Error::custom(format!("unbekannte Karte {text}")))
     }
 }
 

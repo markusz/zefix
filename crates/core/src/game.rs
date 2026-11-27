@@ -1,9 +1,9 @@
 //! Game types and the card sets that depend on them (trump, suits, ...).
 
 use crate::cards::{Card, Cards, DECK_SIZE, Rank, Suit};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase", deny_unknown_fields)]
 pub enum GameKind {
     Sauspiel { called: Suit },
@@ -17,7 +17,7 @@ pub enum GameKind {
 pub const PLAYER_COUNT: usize = 4;
 
 /// Seats relative to me.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Seat {
     Me,

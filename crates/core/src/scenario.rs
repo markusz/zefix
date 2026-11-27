@@ -5,7 +5,7 @@ use crate::game::{Game, GameError, GameKind, Seat};
 use crate::lang::LangError;
 use crate::lang::compile::Compiler;
 use crate::lang::ir::BoolExpr;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const HAND_SIZE: u32 = 8;
@@ -73,12 +73,15 @@ pub enum ScenarioError {
 
 type Result<T> = std::result::Result<T, ScenarioError>;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub iterations: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<u64>,
     pub game: GameKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub table: Option<TableConfig>,
     #[serde(default)]
     pub me: MeConfig,
@@ -86,31 +89,31 @@ pub struct Config {
     pub queries: Vec<QueryConfig>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TableConfig {
     pub vorhand: Seat,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct MeConfig {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub slots: Vec<SlotConfig>,
-    #[serde(rename = "where")]
+    #[serde(rename = "where", skip_serializing_if = "Option::is_none")]
     pub filter: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SlotConfig {
     pub from: String,
     pub count: u32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct QueryConfig {
     pub name: String,

@@ -8,7 +8,7 @@ use crate::runner::{Runner, Shown, Status};
 use crate::theme::{self, Accent};
 use eframe::egui::{self, CornerRadius, ProgressBar, RichText, Sense, Stroke, Ui, vec2};
 use zefix_core::lang::eval::Deal;
-use zefix_core::scenario::ScenarioError;
+use zefix_core::scenario::{ExprSite, ScenarioError};
 use zefix_core::stats::{self, QueryResult, ratio};
 
 const BAR_HEIGHT: f32 = 14.0;
@@ -76,7 +76,11 @@ fn status(ui: &mut Ui, runner: &Runner, accent: egui::Color32) {
         Status::Invalid(ScenarioError::NoQueries) => {
             error_label(ui, "Füge eine Abfrage mit mindestens einem Baustein hinzu.")
         }
-        // Query errors are shown at the query itself.
+        // Expression errors are shown where the expression is edited.
+        Status::Invalid(ScenarioError::Expr {
+            site: ExprSite::MeWhere,
+            ..
+        }) => error_label(ui, "Die weitere Bedingung enthält einen Fehler."),
         Status::Invalid(ScenarioError::Expr { .. }) => {
             error_label(ui, "Eine Abfrage enthält einen Fehler.")
         }

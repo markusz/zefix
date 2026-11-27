@@ -3,7 +3,7 @@
 use super::tiles::{self, EditState, Target, TileRow};
 use crate::model::{Model, Position};
 use crate::theme::{self, Accent};
-use eframe::egui::{self, RichText, Ui};
+use eframe::egui::{self, RichText, TextEdit, Ui};
 use zefix_core::game::{Game, Seat};
 
 pub fn seat_label(seat: Seat) -> &'static str {
@@ -20,7 +20,14 @@ pub fn position_label(position: Position, me: Position) -> String {
     format!("{}. Position · {}", position.number(), seat_label(seat))
 }
 
-pub fn show(ui: &mut Ui, model: &mut Model, edit: &mut EditState, game: &Game) {
+/// `filter_error` is a compile error in the combined filter, rendered with a caret.
+pub fn show(
+    ui: &mut Ui,
+    model: &mut Model,
+    edit: &mut EditState,
+    game: &Game,
+    filter_error: Option<&str>,
+) {
     let seats_accent = theme::accent(ui, Accent::Seats);
     theme::section_header(
         ui,
@@ -47,7 +54,34 @@ pub fn show(ui: &mut Ui, model: &mut Model, edit: &mut EditState, game: &Game) {
         });
         ui.add_space(6.0);
     }
+    extra_condition(ui, model, filter_error);
     filter_preview(ui, model, game);
+}
+
+/// Free-text condition on the deal, for what tiles cannot say (e.g. an `or`).
+fn extra_condition(ui: &mut Ui, model: &mut Model, error: Option<&str>) {
+    egui::CollapsingHeader::new("Weitere Bedingung")
+        .id_salt("extra_condition")
+        // Kept open while it holds something, so an imported condition is never hidden.
+        .open((!model.filter_text.trim().is_empty() || error.is_some()).then_some(true))
+        .show(ui, |ui| {
+            ui.add(
+                TextEdit::multiline(&mut model.filter_text)
+                    .code_editor()
+                    .desired_rows(2)
+                    .desired_width(f32::INFINITY)
+                    .hint_text("z. B. left.frei(gras) or right.has(SO)"),
+            );
+            if let Some(error) = error {
+                theme::inset(ui, |ui| {
+                    ui.label(
+                        RichText::new(error)
+                            .monospace()
+                            .color(ui.visuals().error_fg_color),
+                    );
+                });
+            }
+        });
 }
 
 fn header(ui: &mut Ui, position: Position, seat: Seat, accent: egui::Color32) {

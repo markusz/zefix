@@ -1,6 +1,6 @@
 //! Cards of the long Schafkopf deck (32 cards) and card sets as bitmasks.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{BitAnd, BitOr, BitOrAssign, Sub};
 
@@ -8,7 +8,7 @@ pub const DECK_SIZE: usize = 32;
 pub const CARDS_PER_SUIT: u8 = 8;
 const SUIT_MASK: u32 = 0xFF;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Suit {
     Eichel,

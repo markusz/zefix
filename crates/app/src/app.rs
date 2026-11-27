@@ -5,8 +5,9 @@ use crate::paint;
 use crate::runner::{RunSettings, Runner, Status};
 use crate::theme;
 use crate::view::queries::{self, QueryError};
+use crate::view::share::ShareState;
 use crate::view::tiles::EditState;
-use crate::view::{results, seats};
+use crate::view::{results, seats, share};
 use eframe::egui::{self, ComboBox, RichText, ScrollArea, Ui, Vec2};
 use zefix_core::scenario::{ExprSite, ScenarioError};
 
@@ -49,19 +50,51 @@ pub struct ZefixApp {
     settings: RunSettings,
     edit: EditState,
     runner: Runner,
+    share: ShareState,
+    /// The model last mirrored into the address bar.
+    #[cfg(target_arch = "wasm32")]
+    in_location: Option<Model>,
 }
 
 impl ZefixApp {
     pub fn new(ctx: &egui::Context) -> ZefixApp {
         theme::install(ctx);
         egui_extras::install_image_loaders(ctx);
-        ZefixApp {
+        let app = ZefixApp {
             model: Model::default(),
             settings: RunSettings {
                 iterations: DEFAULT_ITERATIONS,
             },
             edit: EditState::default(),
             runner: Runner::new(),
+            share: ShareState::default(),
+            #[cfg(target_arch = "wasm32")]
+            in_location: None,
+        };
+        #[cfg(target_arch = "wasm32")]
+        let app = app.restored_from_location();
+        app
+    }
+
+    /// Opens what a shared link carries.
+    #[cfg(target_arch = "wasm32")]
+    fn restored_from_location(mut self) -> ZefixApp {
+        match crate::share::location::read() {
+            Some(Ok(model)) => self.model = model,
+            Some(Err(e)) => self.share.show_error(e),
+            None => {}
+        }
+        self
+    }
+
+    fn filter_error(&self) -> Option<String> {
+        match &self.runner.status {
+            Status::Invalid(ScenarioError::Expr {
+                site: ExprSite::MeWhere,
+                src,
+                error,
+            }) => Some(error.render(src)),
+            _ => None,
         }
     }
 
@@ -85,7 +118,12 @@ impl eframe::App for ZefixApp {
         egui::Panel::top("settings")
             .frame(theme::top_bar_frame(ui))
             .show(ui, |ui| {
-                top_bar(ui, &mut self.model, &mut self.settings);
+                top_bar(
+                    ui,
+                    &mut self.model,
+                    &mut self.settings,
+                    &mut self.share.open,
+                );
             });
         let Some(game) = self.model.game.game() else {
             egui::CentralPanel::default().show(ui, |ui| {
@@ -93,12 +131,19 @@ impl eframe::App for ZefixApp {
             });
             return;
         };
+        let filter_error = self.filter_error();
         egui::Panel::left("seats")
             .resizable(true)
             .default_size(SEAT_PANEL_WIDTH)
             .show(ui, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    seats::show(ui, &mut self.model, &mut self.edit, &game);
+                    seats::show(
+                        ui,
+                        &mut self.model,
+                        &mut self.edit,
+                        &game,
+                        filter_error.as_deref(),
+                    );
                 });
             });
         let error = self.query_error();
@@ -109,13 +154,19 @@ impl eframe::App for ZefixApp {
                 results::show(ui, &mut self.runner, self.model.my_position);
             });
         });
+        share::show(ui.ctx(), &mut self.share, &mut self.model, &game);
         // After the UI so edits from this frame start a new run immediately.
         self.runner
             .sync(self.model.spec(&game), self.settings, ui.ctx());
+        #[cfg(target_arch = "wasm32")]
+        if self.in_location.as_ref() != Some(&self.model) {
+            crate::share::location::write(&self.model);
+            self.in_location = Some(self.model.clone());
+        }
     }
 }
 
-fn top_bar(ui: &mut Ui, model: &mut Model, settings: &mut RunSettings) {
+fn top_bar(ui: &mut Ui, model: &mut Model, settings: &mut RunSettings, share_open: &mut bool) {
     ui.horizontal_wrapped(|ui| {
         ui.add(
             egui::Image::new(egui::include_image!("../assets/logo/zefix.svg"))
@@ -133,6 +184,14 @@ fn top_bar(ui: &mut Ui, model: &mut Model, settings: &mut RunSettings) {
         }
         ui.separator();
         run_settings(ui, settings);
+        ui.separator();
+        if ui
+            .button("Teilen")
+            .on_hover_text("Link oder TOML kopieren, Szenario importieren")
+            .clicked()
+        {
+            *share_open = true;
+        }
     });
 }
 
@@ -299,6 +358,11 @@ mod snapshots {
             |_| {},
             |h| h.get_by_value("Normal").click(),
         );
+        render("share", egui::Theme::Dark, |app| {
+            app.model = tout();
+            app.model.filter_text = "left.frei(herz) or right.frei(herz)".into();
+            app.share.open = true;
+        });
         render("query_error", egui::Theme::Dark, |app| {
             if let Some(query) = app.model.queries.first_mut() {
                 query.mode = crate::model::QueryMode::Text;

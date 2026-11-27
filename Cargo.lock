@@ -5210,10 +5210,15 @@ dependencies = [
 name = "zefix-app"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "eframe",
  "egui_extras",
  "egui_kittest",
+ "serde",
+ "serde_json",
+ "toml",
  "wasm-bindgen-futures",
+ "web-sys",
  "web-time",
  "zefix-core",
 ]

@@ -5,6 +5,7 @@ mod format;
 mod model;
 mod paint;
 mod runner;
+mod share;
 mod theme;
 mod view;
 

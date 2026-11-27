@@ -3,7 +3,7 @@
 ## Workspace
 - `crates/core` (`zefix-core`): game rules, query language, simulation, statistics. No I/O, no output formatting.
 - `crates/cli` (`zefix-cli`, binary `zefix`): argument parsing and rendering only; all logic lives in core.
-- `crates/app` (`zefix-app`): egui UI for desktop and WebAssembly (`trunk serve` in `crates/app`). The visual model compiles to query-language text, so UI and TOML share one semantics. The browser has no threads: core is built without its `parallel` feature there and the runner steps the simulation inside frames; check both targets with `cargo clippy -p zefix-app --target wasm32-unknown-unknown -- -D warnings`. `cargo test -p zefix-app -- --ignored` renders screenshots to `target/ui-snapshots/` (needs a GPU).
+- `crates/app` (`zefix-app`): egui UI for desktop and WebAssembly (`trunk serve` in `crates/app`). The visual model compiles to query-language text, so UI and TOML share one semantics. The browser has no threads: core is built without its `parallel` feature there and the runner steps the simulation inside frames; check both targets with `cargo clippy -p zefix-app --target wasm32-unknown-unknown -- -D warnings`. Share links (`share.rs`) serialize the UI model as base64 JSON under a versioned key (`s1=`); bump it when a model change breaks old links. `cargo test -p zefix-app -- --ignored` renders screenshots to `target/ui-snapshots/` (needs a GPU).
 - `crates/mcp` (`zefix-mcp`): MCP server over stdio; tool logic in `tools.rs` (tested without the protocol), protocol surface in `server.rs`. `reference` serves the README from `### Config` up to `## Entwicklung`, so keep those headings; it appends `docs/beispiele.md`, whose results must match `zefix run -n 1e6 --seed 42`.
 
 ## Rust

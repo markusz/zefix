@@ -21,6 +21,8 @@ Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rech
 
 Ergebnisse erscheinen live, jede Änderung startet die Rechnung neu. „Genauigkeit“ legt fest, wie viele Blätter gemischt werden (10.000 bis 10 Mio.).
 
+Was Bausteine nicht ausdrücken (etwa ein „oder“), kommt als Text in „Weitere Bedingung“. „Teilen“ kopiert einen Link, der alles genau so wiederherstellt, oder das Szenario als TOML für Kommandozeile und KI-Assistenten; dort lassen sich auch Links und TOML importieren. Im Browser steht der aktuelle Stand immer in der Adresszeile.
+
 Lokal starten: `cargo run --release -p zefix-app`
 
 ## Kommandozeile
