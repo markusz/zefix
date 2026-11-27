@@ -2,15 +2,22 @@
 
 # zefix!
 
-Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: Es mischt die übrigen Karten millionenfach (Monte-Carlo, langes Blatt) und zählt, wie oft eine Frage zutrifft – etwa „Hat ein Gegner SO und mindestens drei Trumpf?“.
+Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus, per Monte-Carlo-Simulation für Schafkopf (langes Blatt).
 
 **Ausprobieren:** https://zefix.markusziller.de – läuft komplett im Browser, nichts wird hochgeladen.
 
+## So funktioniert's
+
+1. **Szenario:** was du weißt oder annimmst – Spiel, deine Position, dein Blatt (feste Karten oder nur Bedingungen wie „2–5 Trumpf“), optional Bedingungen an die anderen („Links ist Gras-frei“).
+2. **Simulation:** zefix! mischt millionenfach Blätter, die zum Szenario passen.
+3. **Abfragen:** Fragen, die an jedes gemischte Blatt gestellt werden, z. B. „Hat ein Gegner SO und mindestens drei Trumpf?“.
+4. **Ergebnis:** der Anteil der Blätter, auf die eine Abfrage zutrifft – also ihre Wahrscheinlichkeit unter den Annahmen des Szenarios.
+
 ## Oberfläche
 
-1. Oben Spiel (Sauspiel, Solo, Wenz, …) und die eigene Position wählen.
-2. Links das eigene Blatt festlegen: feste Karten und/oder Bedingungen wie „2–5 weitere Trumpf“. Auch für die anderen Spieler lassen sich Bedingungen setzen, z. B. „Links hat keine Gras“.
-3. Rechts Abfragen bauen: wer (ein Gegner, beide Gegner, Mitspieler, …) was hat. Alternativ als Text in der Abfragesprache (siehe unten).
+1. Szenario oben: Spiel (Sauspiel, Solo, Wenz, …) und die eigene Position wählen.
+2. Szenario links: das eigene Blatt aus festen Karten und/oder Bedingungen wie „2–5 weitere Trumpf“. Auch für die anderen Spieler lassen sich Bedingungen setzen, z. B. „Links hat keine Gras“.
+3. Abfragen rechts: wer (ein Gegner, beide Gegner, Mitspieler, …) was hat. Alternativ als Text in der Abfragesprache (siehe unten).
 
 Ergebnisse erscheinen live, jede Änderung startet die Rechnung neu. „Genauigkeit“ legt fest, wie viele Blätter gemischt werden (10.000 bis 10 Mio.).
 
@@ -18,7 +25,7 @@ Lokal starten: `cargo run --release -p zefix-app`
 
 ## Kommandozeile
 
-Für Szenarien als Datei, Skripte oder Batch-Läufe. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; Beispiele liegen in [`scenarios/`](scenarios).
+Für Szenarien als Datei, Skripte oder Batch-Läufe. Eine TOML-Datei legt Szenario und Abfragen fest; Beispiele liegen in [`scenarios/`](scenarios).
 
 ```
 $ cargo install --path crates/cli
