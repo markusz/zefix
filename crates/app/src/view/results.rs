@@ -6,16 +6,62 @@ use crate::model::Position;
 use crate::paint::{self, CardLook};
 use crate::runner::{Runner, Shown, Status};
 use crate::theme::{self, Accent};
-use eframe::egui::{self, CornerRadius, ProgressBar, RichText, Sense, Stroke, Ui, vec2};
+use eframe::egui::{self, ProgressBar, RichText, Ui};
 use zefix_core::lang::eval::Deal;
 use zefix_core::scenario::{ExprSite, ScenarioError};
 use zefix_core::stats::{self, QueryResult, ratio};
 
-const BAR_HEIGHT: f32 = 14.0;
+const INLINE_PERCENT_SIZE: f32 = 16.0;
 const EXAMPLE_CARD_SCALE: f32 = 0.6;
 const EXAMPLE_LABEL_WIDTH: f32 = 150.0;
 /// Opacity of results that belong to an older model.
 const STALE_OPACITY: f32 = 0.45;
+
+/// Results to show inside each query's own box (phones), matched by query name so a result
+/// stays with its query while queries are added or removed.
+pub struct Inline {
+    results: Vec<QueryResult>,
+    stale: bool,
+}
+
+impl Inline {
+    pub fn of(runner: &Runner) -> Option<Inline> {
+        let shown = runner.shown.as_ref()?;
+        Some(Inline {
+            results: stats::results(&shown.scenario, &shown.snapshot.outcome),
+            stale: runner.is_stale(),
+        })
+    }
+
+    /// Just the probability, as a chip in the bottom right corner.
+    pub fn show_for(&self, ui: &mut Ui, name: &str) {
+        let Some(result) = self.results.iter().find(|r| r.name == name) else {
+            return;
+        };
+        ui.scope(|ui| {
+            if self.stale {
+                ui.set_opacity(STALE_OPACITY);
+            }
+            // One row high: a bare right-to-left layout would take the rest of the card.
+            let row = egui::vec2(ui.available_width(), 0.0);
+            let layout = egui::Layout::right_to_left(egui::Align::Center);
+            ui.allocate_ui_with_layout(row, layout, |ui| {
+                let text =
+                    RichText::new(format::percent(result.estimate.p)).size(INLINE_PERCENT_SIZE);
+                theme::chip(ui, text, theme::accent(ui, Accent::Results));
+            });
+        });
+    }
+}
+
+/// Progress or what went wrong; nothing once the numbers are in.
+pub fn status_line(ui: &mut Ui, runner: &Runner) {
+    match &runner.status {
+        Status::Running => progress(ui, runner),
+        Status::Finished | Status::Stopped => {}
+        status => problem(ui, status),
+    }
+}
 
 pub fn show(ui: &mut Ui, runner: &mut Runner, me: Position) {
     let accent = theme::accent(ui, Accent::Results);
@@ -35,7 +81,7 @@ pub fn show(ui: &mut Ui, runner: &mut Runner, me: Position) {
             }
             Status::Finished | Status::Invalid(_) => {}
         }
-        status(ui, runner, accent);
+        status(ui, runner);
     });
     ui.add_space(4.0);
     let stale = runner.is_stale();
@@ -56,22 +102,31 @@ pub fn show(ui: &mut Ui, runner: &mut Runner, me: Position) {
     }
 }
 
-fn status(ui: &mut Ui, runner: &Runner, accent: egui::Color32) {
+fn status(ui: &mut Ui, runner: &Runner) {
     match &runner.status {
-        Status::Running => {
-            let fraction = runner.shown.as_ref().map_or(0.0, |s| s.snapshot.fraction);
-            ui.add(
-                ProgressBar::new(fraction as f32)
-                    .fill(accent)
-                    .animate(true)
-                    .show_percentage(),
-            );
-        }
+        Status::Running => progress(ui, runner),
         Status::Finished | Status::Stopped => {
             if let Some(shown) = &runner.shown {
                 ui.weak(summary(shown));
             }
         }
+        status => problem(ui, status),
+    }
+}
+
+fn progress(ui: &mut Ui, runner: &Runner) {
+    let fraction = runner.shown.as_ref().map_or(0.0, |s| s.snapshot.fraction);
+    ui.add(
+        ProgressBar::new(fraction as f32)
+            .fill(theme::accent(ui, Accent::Results))
+            .animate(true)
+            .show_percentage(),
+    );
+}
+
+fn problem(ui: &mut Ui, status: &Status) {
+    match status {
+        Status::Running | Status::Finished | Status::Stopped => {}
         Status::Failed(msg) => error_label(ui, msg),
         Status::Invalid(ScenarioError::NoQueries) => {
             error_label(ui, "Füge eine Abfrage mit mindestens einem Baustein hinzu.")
@@ -122,11 +177,13 @@ fn result_card(
     theme::card(ui, accent, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(&result.name).strong());
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // One row high: a bare right-to-left layout would take the rest of the card.
+            let row = egui::vec2(ui.available_width(), 0.0);
+            let layout = egui::Layout::right_to_left(egui::Align::Center);
+            ui.allocate_ui_with_layout(row, layout, |ui| {
                 ui.label(RichText::new(format::percent(e.p)).size(20.0).strong());
             });
         });
-        probability_bar(ui, e.p, e.ci95.lo, e.ci95.hi, accent);
         ui.weak(format!(
             "± {} (95 %) · {} Treffer",
             format::decimal(format::PERCENT * e.margin(), 2),
@@ -143,30 +200,6 @@ fn result_card(
                 });
         }
     });
-}
-
-fn probability_bar(ui: &mut Ui, p: f64, lo: f64, hi: f64, accent: egui::Color32) {
-    let width = ui.available_width();
-    let (rect, _) = ui.allocate_exact_size(vec2(width, BAR_HEIGHT), Sense::hover());
-    let painter = ui.painter();
-    let visuals = ui.visuals();
-    let x = |v: f64| rect.left() + rect.width() * v.clamp(0.0, 1.0) as f32;
-    painter.rect_filled(rect, CornerRadius::same(3), visuals.extreme_bg_color);
-    let mut filled = rect;
-    filled.set_right(x(p));
-    painter.rect_filled(filled, CornerRadius::same(3), accent);
-    let whisker = Stroke::new(1.5, visuals.strong_text_color());
-    let (top, bottom) = (rect.top() + 2.0, rect.bottom() - 2.0);
-    painter.line_segment(
-        [
-            (x(lo), rect.center().y).into(),
-            (x(hi), rect.center().y).into(),
-        ],
-        whisker,
-    );
-    for v in [lo, hi] {
-        painter.line_segment([(x(v), top).into(), (x(v), bottom).into()], whisker);
-    }
 }
 
 fn deal_view(ui: &mut Ui, deal: &Deal, shown: &Shown, me: Position) {

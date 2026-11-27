@@ -238,7 +238,13 @@ fn placeholder_button(
     let frame = Button::new("")
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::new(1.0, accent.gamma_multiply(0.6)));
-    let response = ui.put(rect, frame);
+    // The rect is the size; touch layouts must not stretch it to their larger targets.
+    let response = ui
+        .scope(|ui| {
+            ui.spacing_mut().interact_size = egui::Vec2::ZERO;
+            ui.put(rect, frame)
+        })
+        .inner;
     let font = egui::TextStyle::Button.resolve(ui.style());
     let galley = ui.painter().layout_no_wrap(label.into(), font, accent);
     let icon_size = vec2(galley.size().y * 0.6, galley.size().y * 0.85);

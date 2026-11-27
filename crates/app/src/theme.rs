@@ -29,6 +29,10 @@ struct Tokens {
     selection: Color32,
 }
 
+const COMPACT_BUTTON_PADDING: egui::Vec2 = vec2(6.0, 3.0);
+const COMPACT_ITEM_SPACING: egui::Vec2 = vec2(6.0, 4.0);
+const COMPACT_CARD_MARGIN: i8 = 6;
+const DENSITY_KEY: &str = "zefix_density";
 const DARK: Tokens = Tokens {
     panel: Color32::from_rgb(0x14, 0x14, 0x13),
     card: Color32::from_rgb(0x22, 0x22, 0x20),
@@ -57,8 +61,11 @@ const LIGHT: Tokens = Tokens {
 
 const CORNER: u8 = 6;
 const CARD_CORNER: u8 = 8;
-const CHIP_CORNER: u8 = 12;
 const STRIPE_WIDTH: f32 = 4.0;
+const CHIP_CORNER: u8 = 12;
+const CHIP_PADDING: Vec2 = vec2(10.0, 3.0);
+/// Fills brighter than this take black text.
+const INK_THRESHOLD: f32 = 0.55;
 const CARD_MARGIN: i8 = 10;
 const INSET_MARGIN: i8 = 8;
 
@@ -118,16 +125,20 @@ fn configure(style: &mut egui::Style, t: &Tokens) {
 
 /// Elevated surface with an accent stripe on the left edge.
 pub fn card<R>(ui: &mut Ui, accent: Color32, add: impl FnOnce(&mut Ui) -> R) -> R {
+    let margin = match density(ui) {
+        Density::Regular => CARD_MARGIN,
+        Density::Compact => COMPACT_CARD_MARGIN,
+    };
     let visuals = ui.visuals();
     let frame = Frame::new()
         .fill(visuals.window_fill)
         .stroke(visuals.widgets.noninteractive.bg_stroke)
         .corner_radius(CornerRadius::same(CARD_CORNER))
         .inner_margin(Margin {
-            left: CARD_MARGIN + STRIPE_WIDTH as i8,
-            right: CARD_MARGIN,
-            top: CARD_MARGIN,
-            bottom: CARD_MARGIN,
+            left: margin + STRIPE_WIDTH as i8,
+            right: margin,
+            top: margin,
+            bottom: margin,
         });
     let response = frame.show(ui, |ui| {
         ui.set_width(ui.available_width());
@@ -143,6 +154,41 @@ pub fn card<R>(ui: &mut Ui, accent: Color32, add: impl FnOnce(&mut Ui) -> R) -> 
     };
     ui.painter().rect_filled(stripe, radius, accent);
     response.inner
+}
+
+/// How tightly the UI is packed. Set once per frame at the root; spacing travels down with the
+/// `Style`, and the few things `Style` cannot express (card margins, section headings) read it
+/// via `density`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Density {
+    #[default]
+    Regular,
+    /// Phones: tighter spacing and margins, no section headings (the tabs name the sections).
+    Compact,
+}
+
+impl Density {
+    /// Query-language text (previews, text mode, free conditions) is a desktop tool: nobody
+    /// reads or types it on a phone.
+    pub fn shows_code(self) -> bool {
+        self == Density::Regular
+    }
+}
+
+pub fn set_density(ui: &mut Ui, density: Density) {
+    ui.ctx()
+        .data_mut(|d| d.insert_temp(egui::Id::unique(DENSITY_KEY), density));
+    if density == Density::Compact {
+        let spacing = &mut ui.style_mut().spacing;
+        spacing.button_padding = COMPACT_BUTTON_PADDING;
+        spacing.item_spacing = COMPACT_ITEM_SPACING;
+    }
+}
+
+pub fn density(ui: &Ui) -> Density {
+    ui.ctx()
+        .data(|d| d.get_temp(egui::Id::unique(DENSITY_KEY)))
+        .unwrap_or_default()
 }
 
 /// Raised bar for the global settings.
@@ -164,17 +210,41 @@ pub fn inset<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
         .inner
 }
 
-pub fn section_header(ui: &mut Ui, title: &str, subtitle: &str, accent: Color32) {
+/// `hint` explains the section on hover rather than taking a line of its own.
+pub fn section_header(ui: &mut Ui, title: &str, hint: &str, accent: Color32) {
+    if density(ui) == Density::Compact {
+        return;
+    }
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(Vec2::splat(14.0), egui::Sense::hover());
         ui.painter()
             .rect_filled(rect, CornerRadius::same(3), accent);
-        ui.heading(RichText::new(title).strong());
+        let heading = ui.heading(RichText::new(title).strong());
+        if !hint.is_empty() {
+            heading.on_hover_text(hint);
+        }
     });
-    if !subtitle.is_empty() {
-        ui.weak(subtitle);
-    }
     ui.add_space(4.0);
+}
+
+/// A filled, rounded label in `fill`, for a value that should stand out.
+pub fn chip(ui: &mut Ui, text: RichText, fill: Color32) -> Response {
+    let ink = if fill.intensity() > INK_THRESHOLD {
+        Color32::BLACK
+    } else {
+        Color32::WHITE
+    };
+    ui.scope(|ui| {
+        ui.spacing_mut().button_padding = CHIP_PADDING;
+        ui.add(
+            Button::new(text.color(ink).strong())
+                .fill(fill)
+                .stroke(Stroke::NONE)
+                .corner_radius(CornerRadius::same(CHIP_CORNER))
+                .sense(egui::Sense::hover()),
+        )
+    })
+    .inner
 }
 
 /// An outlined action button in the area's accent, visibly distinct from data tiles.
@@ -192,21 +262,5 @@ pub fn danger(ui: &mut Ui, text: &str) -> Response {
         Button::new(RichText::new(text).color(color))
             .fill(Color32::TRANSPARENT)
             .stroke(Stroke::new(1.0, color.gamma_multiply(0.6))),
-    )
-}
-
-/// A filled label, e.g. "Ich" or "Vorhand".
-pub fn badge(ui: &mut Ui, text: &str, fill: Color32) -> Response {
-    let ink = if fill.intensity() > 0.55 {
-        Color32::BLACK
-    } else {
-        Color32::WHITE
-    };
-    ui.add(
-        Button::new(RichText::new(text).color(ink).strong())
-            .fill(fill)
-            .stroke(Stroke::NONE)
-            .corner_radius(CornerRadius::same(CHIP_CORNER))
-            .sense(egui::Sense::hover()),
     )
 }

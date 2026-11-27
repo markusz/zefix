@@ -42,7 +42,6 @@ pub fn show(
             _ => seats_accent,
         };
         theme::card(ui, accent, |ui| {
-            header(ui, position, seat, accent);
             let blocked = model.cards_elsewhere(seat);
             let row = TileRow {
                 target: Target::Seat(seat),
@@ -54,8 +53,14 @@ pub fn show(
         });
         ui.add_space(6.0);
     }
-    extra_condition(ui, model, filter_error);
-    filter_preview(ui, model, game);
+    // Only an imported or shared condition is worth showing where code is hidden.
+    let has_condition = !model.filter_text.trim().is_empty() || filter_error.is_some();
+    if theme::density(ui).shows_code() || has_condition {
+        extra_condition(ui, model, filter_error);
+    }
+    if theme::density(ui).shows_code() {
+        filter_preview(ui, model, game);
+    }
 }
 
 /// Free-text condition on the deal, for what tiles cannot say (e.g. an `or`).
@@ -82,20 +87,6 @@ fn extra_condition(ui: &mut Ui, model: &mut Model, error: Option<&str>) {
                 });
             }
         });
-}
-
-fn header(ui: &mut Ui, position: Position, seat: Seat, accent: egui::Color32) {
-    ui.horizontal(|ui| {
-        let title = format!("{}. Position", position.number());
-        ui.label(RichText::new(title).strong().size(15.0));
-        match seat {
-            Seat::Me => theme::badge(ui, "Ich", accent),
-            _ => ui.label(seat_label(seat)),
-        };
-        if position == Position::First {
-            ui.weak("Vorhand · spielt aus");
-        }
-    });
 }
 
 fn filter_preview(ui: &mut Ui, model: &Model, game: &Game) {

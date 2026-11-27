@@ -1,5 +1,6 @@
 //! Query editor: each query is either built from tiles plus a "who" selector, or typed as text.
 
+use super::results::Inline;
 use super::seats::position_label;
 use super::tiles::{self, EditState, Target, TileRow};
 use crate::model::{Model, OTHER_PLAYERS, Position, QueryMode, QueryModel, Scope};
@@ -9,6 +10,8 @@ use zefix_core::cards::Cards;
 use zefix_core::game::Game;
 
 const NAME_WIDTH: f32 = 260.0;
+const DELETE_WIDTH: f32 = 72.0;
+const SCOPE_WIDTH: f32 = 240.0;
 
 /// A compile error for one query, already rendered with a caret under the bad spot.
 pub struct QueryError {
@@ -22,6 +25,7 @@ pub fn show(
     edit: &mut EditState,
     game: &Game,
     error: Option<&QueryError>,
+    inline: Option<&Inline>,
 ) {
     let accent = theme::accent(ui, Accent::Queries);
     theme::section_header(ui, "Abfragen", "Wie wahrscheinlich ist …", accent);
@@ -33,6 +37,7 @@ pub fn show(
             index,
             me,
             error,
+            inline,
             accent,
         };
         if query_frame(ui, query, edit, game, row) == RowAction::Remove {
@@ -60,6 +65,8 @@ struct QueryRow<'a> {
     index: usize,
     me: Position,
     error: Option<&'a QueryError>,
+    /// Set on phones, where results sit inside each query.
+    inline: Option<&'a Inline>,
     accent: Color32,
 }
 
@@ -89,6 +96,9 @@ fn query_frame(
                 );
             }
         }
+        if let Some(inline) = row.inline {
+            inline.show_for(ui, &query.name);
+        }
         if let Some(error) = row.error {
             theme::inset(ui, |ui| {
                 ui.label(
@@ -103,17 +113,13 @@ fn query_frame(
 }
 
 fn title_bar(ui: &mut Ui, query: &mut QueryModel, game: &Game, index: usize) -> RowAction {
-    ui.horizontal(|ui| {
-        ui.add(TextEdit::singleline(&mut query.name).desired_width(NAME_WIDTH));
-        let before = query.mode;
-        ui.selectable_value(&mut query.mode, QueryMode::Visual, "Bausteine");
-        ui.selectable_value(&mut query.mode, QueryMode::Text, "Text");
-        // Switching to text starts from the generated expression, so nothing is lost.
-        if before == QueryMode::Visual
-            && query.mode == QueryMode::Text
-            && query.text.trim().is_empty()
-        {
-            query.text = query.visual_expr(game).unwrap_or_default();
+    // Wrapped, so on a phone the buttons move under the name instead of off screen.
+    ui.horizontal_wrapped(|ui| {
+        // Leaves room for "Löschen" on the same line.
+        let width = NAME_WIDTH.min(ui.available_width() - DELETE_WIDTH);
+        ui.add(TextEdit::singleline(&mut query.name).desired_width(width));
+        if theme::density(ui).shows_code() {
+            mode_toggle(ui, query, game);
         }
         let remove = theme::danger(ui, "Löschen")
             .on_hover_text(format!("Abfrage {} löschen", index + 1))
@@ -125,6 +131,17 @@ fn title_bar(ui: &mut Ui, query: &mut QueryModel, game: &Game, index: usize) -> 
         }
     })
     .inner
+}
+
+fn mode_toggle(ui: &mut Ui, query: &mut QueryModel, game: &Game) {
+    let before = query.mode;
+    ui.selectable_value(&mut query.mode, QueryMode::Visual, "Bausteine");
+    ui.selectable_value(&mut query.mode, QueryMode::Text, "Text");
+    // Switching to text starts from the generated expression, so nothing is lost.
+    if before == QueryMode::Visual && query.mode == QueryMode::Text && query.text.trim().is_empty()
+    {
+        query.text = query.visual_expr(game).unwrap_or_default();
+    }
 }
 
 fn visual(
@@ -145,9 +162,13 @@ fn visual(
         accent: row.accent,
     };
     tiles::show(ui, game, edit, tiles_row);
+    let expr = query.visual_expr(game);
+    if expr.is_some() && !theme::density(ui).shows_code() {
+        return;
+    }
     theme::inset(ui, |ui| {
         ui.set_width(ui.available_width());
-        match query.visual_expr(game) {
+        match expr {
             Some(expr) => ui.weak(RichText::new(expr).monospace()),
             None => ui.weak("Noch leer: Karten oder eine Anzahl hinzufügen."),
         };
@@ -189,7 +210,8 @@ fn scope_picker(ui: &mut Ui, scope: &mut Scope, game: &Game, row: &QueryRow<'_>)
     }
     ComboBox::from_id_salt(("scope", row.index))
         .selected_text(scope_label(*scope, me))
-        .width(240.0)
+        // Never wider than the card, or it pushes the whole query off a phone screen.
+        .width(SCOPE_WIDTH.min(ui.available_width()))
         .show_ui(ui, |ui| {
             for option in groups.into_iter().chain(players) {
                 let selected = std::mem::discriminant(scope) == std::mem::discriminant(&option)
