@@ -1,4 +1,3 @@
 /target
 .DS_Store
-/crates/app/dist
 .vercel

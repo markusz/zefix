@@ -1,0 +1,12 @@
+[package]
+name = "zefix-wasm"
+description = "zefix-model for the browser, built into web/src/wasm by web/scripts/build-wasm.sh"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zefix-model.workspace = true
+wasm-bindgen.workspace = true

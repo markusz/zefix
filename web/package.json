@@ -1,0 +1,31 @@
+{
+  "name": "zefix-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "wasm": "sh scripts/build-wasm.sh",
+    "dev": "sh scripts/build-wasm.sh && vite",
+    "build": "sh scripts/build-wasm.sh && tsc --noEmit && vite build",
+    "check": "sh scripts/build-wasm.sh && tsc --noEmit",
+    "preview": "vite preview",
+    "desktop": "cd ../crates/desktop && tauri dev",
+    "desktop:build": "cd ../crates/desktop && tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.8"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

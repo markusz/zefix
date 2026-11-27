@@ -163,6 +163,10 @@ impl<S: Borrow<Scenario>> Run<S> {
         &self.outcome
     }
 
+    pub fn scenario(&self) -> &Scenario {
+        self.scn.borrow()
+    }
+
     pub fn into_outcome(self) -> Outcome {
         self.outcome
     }

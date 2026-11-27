@@ -16,14 +16,14 @@ Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rech
 ## Oberfläche
 
 1. Szenario oben: Spiel (Sauspiel, Solo, Wenz, …) und die eigene Position wählen.
-2. Szenario links: das eigene Blatt aus festen Karten und/oder Bedingungen wie „2–5 weitere Trumpf“. Auch für die anderen Spieler lassen sich Bedingungen setzen, z. B. „Links hat keine Gras“.
-3. Abfragen rechts: wer (ein Gegner, beide Gegner, Mitspieler, …) was hat. Alternativ als Text in der Abfragesprache (siehe unten).
+2. Blätter: das eigene Blatt aus festen Karten und/oder Regeln wie „2–5 weitere Trumpf“. Auch für die anderen Spieler lassen sich Regeln setzen, z. B. „Links hat keine Gras“.
+3. Abfragen: wer (ein Gegner, beide Gegner, Mitspieler, …) was hat. Alternativ als Text in der Abfragesprache (siehe unten).
 
-Ergebnisse erscheinen live, jede Änderung startet die Rechnung neu. „Genauigkeit“ legt fest, wie viele Blätter gemischt werden (10.000 bis 10 Mio.).
+Jede Abfrage zeigt ihre Wahrscheinlichkeit direkt in ihrer Box; jede Änderung startet die Rechnung neu. „Genauigkeit“ legt fest, wie viele Blätter gemischt werden (10.000 bis 10 Mio.).
 
-Was Bausteine nicht ausdrücken (etwa ein „oder“), kommt als Text in „Weitere Bedingung“. „Teilen“ kopiert einen Link, der alles genau so wiederherstellt, oder das Szenario als TOML für Kommandozeile und KI-Assistenten; dort lassen sich auch Links und TOML importieren. Im Browser steht der aktuelle Stand immer in der Adresszeile. Auf dem Handy liegen Blätter und Abfragen in zwei Tabs; jede Abfrage zeigt ihr Ergebnis direkt in ihrer Box.
+Was Regeln nicht ausdrücken (etwa ein „oder“), kommt als Text in „Weitere Bedingung“. „Teilen“ kopiert einen Link, der alles genau so wiederherstellt, oder das Szenario als TOML für Kommandozeile und KI-Assistenten; dort lassen sich auch Links und TOML importieren. Der aktuelle Stand steht immer in der Adresszeile. Auf dem Handy liegen Blätter und Abfragen in zwei Tabs.
 
-Lokal starten: `cargo run --release -p zefix-app`
+Als Mac-App rechnet zefix! auf allen Kernen statt auf einem: `cd web && npm run desktop:build` legt `target/release/bundle/macos/zefix!.app` an.
 
 ## Kommandozeile
 
@@ -123,12 +123,16 @@ all(p in others, p.count(trumpf) <= me.count(trumpf))
 | Crate | Inhalt |
 |---|---|
 | `crates/core` (`zefix-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
+| `crates/model` (`zefix-model`) | Modell der Oberfläche, Teilen-Links, TOML, schrittweise Simulation |
+| `crates/wasm` (`zefix-wasm`) | `zefix-model` als WebAssembly für den Browser |
+| `crates/desktop` (`zefix-desktop`) | Mac-App (Tauri), rechnet nativ |
 | `crates/cli` (`zefix-cli`) | Kommandozeile `zefix` |
-| `crates/app` (`zefix-app`) | Oberfläche für Desktop und Browser |
 | `crates/mcp` (`zefix-mcp`) | MCP-Server für KI-Assistenten |
+| `web/` | Oberfläche (React, TypeScript, Vite) für Browser und Mac-App |
 
-Die Oberfläche übersetzt ihre Bausteine in die Abfragesprache; Oberfläche und TOML haben also dieselbe Semantik. Regeln fürs Mitarbeiten stehen in [`AGENTS.md`](AGENTS.md).
+Die Oberfläche übersetzt ihre Bausteine in Rust in die Abfragesprache; Oberfläche und TOML haben also dieselbe Semantik. Regeln fürs Mitarbeiten stehen in [`AGENTS.md`](AGENTS.md).
 
 - Tests: `cargo test`; Simulationsergebnisse werden in `crates/core/tests/closed_form.rs` gegen exakte hypergeometrische Werte geprüft.
-- Browser lokal (braucht `rustup target add wasm32-unknown-unknown` und [trunk](https://trunkrs.dev)): `cd crates/app && trunk serve --release`, dann http://127.0.0.1:8080. Im Browser rechnet die Simulation auf einem Kern, kommt aber auf dieselben Zahlen wie der Desktop.
+- Browser lokal (braucht Node 22, `rustup target add wasm32-unknown-unknown`): `cd web && npm install && npm run dev`, dann http://localhost:5173. Im Browser rechnet die Simulation auf einem Kern, kommt aber auf dieselben Zahlen wie die Mac-App.
+- Mac-App lokal: `cd web && npm run desktop`.
 - Deployment: Jeder Push auf `develop` wird von Vercel gebaut (`vercel.json`, `scripts/vercel-build.sh`) und auf https://zefix.markusziller.de veröffentlicht.

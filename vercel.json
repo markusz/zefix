@@ -3,5 +3,5 @@
   "framework": null,
   "installCommand": "true",
   "buildCommand": "sh scripts/vercel-build.sh",
-  "outputDirectory": "crates/app/dist"
+  "outputDirectory": "web/dist"
 }

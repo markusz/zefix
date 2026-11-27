@@ -1,0 +1,18 @@
+[package]
+name = "zefix-desktop"
+description = "zefix! as a native app: the web UI in a Tauri window, simulating natively on all cores"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "zefix-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.7.6", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.4", features = [] }
+zefix-model = { workspace = true, features = ["parallel"] }
+serde.workspace = true
+serde_json.workspace = true
