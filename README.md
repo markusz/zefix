@@ -2,9 +2,26 @@
 
 # zefix!
 
-Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: eine Monte-Carlo-Simulation für Schafkopf (langes Blatt), als Oberfläche für Desktop und Browser und als Kommandozeile `zefix`. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; `zefix` gibt für jede Frage den Anteil der Deals aus, in denen sie zutrifft.
+Wie wahrscheinlich ist das Blatt, das einem gleich den Tout versaut? zefix! rechnet es aus: Es mischt die übrigen Karten millionenfach (Monte-Carlo, langes Blatt) und zählt, wie oft eine Frage zutrifft – etwa „Hat ein Gegner SO und mindestens drei Trumpf?“.
+
+**Ausprobieren:** https://zefix.markusziller.de – läuft komplett im Browser, nichts wird hochgeladen.
+
+## Oberfläche
+
+1. Oben Spiel (Sauspiel, Solo, Wenz, …) und die eigene Position wählen.
+2. Links das eigene Blatt festlegen: feste Karten und/oder Bedingungen wie „2–5 weitere Trumpf“. Auch für die anderen Spieler lassen sich Bedingungen setzen, z. B. „Links hat keine Gras“.
+3. Rechts Abfragen bauen: wer (ein Gegner, beide Gegner, Mitspieler, …) was hat. Alternativ als Text in der Abfragesprache (siehe unten).
+
+Ergebnisse erscheinen live, jede Änderung startet die Rechnung neu. „Genauigkeit“ legt fest, wie viele Blätter gemischt werden (10.000 bis 10 Mio.).
+
+Lokal starten: `cargo run --release -p zefix-app`
+
+## Kommandozeile
+
+Für Szenarien als Datei, Skripte oder Batch-Läufe. Eine TOML-Datei legt Spiel, eigene Hand und Fragen fest; Beispiele liegen in [`scenarios/`](scenarios).
 
 ```
+$ cargo install --path crates/cli
 $ zefix run scenarios/ober.toml
 Sauspiel auf die Schellen-Sau · 10.000.000 Deals · Seed 42 · 0,21 s
 Akzeptanz 57,14 % (17.502.225 Versuche)
@@ -18,19 +35,7 @@ Akzeptanz 57,14 % (17.502.225 Versuche)
 └───────────────────────────────────────┴─────────┴───────┴───────────┘
 ```
 
-## Aufbau
-
-| Crate | Inhalt |
-|---|---|
-| `crates/core` (`zefix-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
-| `crates/cli` (`zefix-cli`) | Kommandozeile `zefix` |
-| `crates/app` (`zefix-app`) | Oberfläche für Desktop und Browser: Bedingungen und Abfragen per Baustein, Ergebnisse live |
-
-Installieren: `cargo install --path crates/cli` · Oberfläche starten: `cargo run --release -p zefix-app`
-
-Im Browser (braucht `rustup target add wasm32-unknown-unknown` und [trunk](https://trunkrs.dev)): `cd crates/app && trunk serve --release`, dann http://127.0.0.1:8080 öffnen. `trunk build --release` legt die statischen Dateien in `crates/app/dist`. Im Browser rechnet die Simulation auf einem Kern, kommt aber auf dieselben Zahlen wie der Desktop. Jeder Push auf `develop` wird von Vercel gebaut (`vercel.json`, `scripts/vercel-build.sh`) und auf https://zefix.markusziller.de veröffentlicht.
-
-## CLI
+### Aufruf
 
 ```
 zefix run <config> [-n 1e6] [--seed N] [--format text|json] [--examples N] [--threads N]
@@ -39,7 +44,7 @@ zefix check <config>
 
 `±95 %` ist die halbe Breite des 95-%-Wilson-Intervalls. Gleicher Seed → gleiches Ergebnis, unabhängig von der Thread-Zahl.
 
-## Config
+### Config
 
 ```toml
 iterations = 10_000_000         # optional, Default 1e7
@@ -71,7 +76,7 @@ where = "any(p in others, p.has(HO, SO) and p.count(trumpf - ober) >= 2)"
 
 **Rufregel:** Im Sauspiel hat `me` die gerufene Sau nicht, aber mindestens eine Karte der Farbe. Deals, die das verletzen, werden verworfen. In v1 ist `me` immer der Spielmacher.
 
-## Sprache
+## Abfragesprache
 
 |                   |                                                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -92,3 +97,17 @@ none(p in opponents, p.has_any(HO | SO))
 num(f in farben, me.frei(f)) >= 1
 all(p in others, p.count(trumpf) <= me.count(trumpf))
 ```
+
+## Entwicklung
+
+| Crate | Inhalt |
+|---|---|
+| `crates/core` (`zefix-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
+| `crates/cli` (`zefix-cli`) | Kommandozeile `zefix` |
+| `crates/app` (`zefix-app`) | Oberfläche für Desktop und Browser |
+
+Die Oberfläche übersetzt ihre Bausteine in die Abfragesprache; Oberfläche und TOML haben also dieselbe Semantik. Regeln fürs Mitarbeiten stehen in [`AGENTS.md`](AGENTS.md).
+
+- Tests: `cargo test`; Simulationsergebnisse werden in `crates/core/tests/closed_form.rs` gegen exakte hypergeometrische Werte geprüft.
+- Browser lokal (braucht `rustup target add wasm32-unknown-unknown` und [trunk](https://trunkrs.dev)): `cd crates/app && trunk serve --release`, dann http://127.0.0.1:8080. Im Browser rechnet die Simulation auf einem Kern, kommt aber auf dieselben Zahlen wie der Desktop.
+- Deployment: Jeder Push auf `develop` wird von Vercel gebaut (`vercel.json`, `scripts/vercel-build.sh`) und auf https://zefix.markusziller.de veröffentlicht.
