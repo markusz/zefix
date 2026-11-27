@@ -83,6 +83,17 @@ where = "any(p in others, p.has(HO, SO) and p.count(trumpf - ober) >= 2)"
 
 **Rufregel:** Im Sauspiel hat `me` die gerufene Sau nicht, aber mindestens eine Karte der Farbe. Deals, die das verletzen, werden verworfen. In v1 ist `me` immer der Spielmacher.
 
+## KI-Assistenten (MCP)
+
+`zefix-mcp` stellt zefix! als [MCP](https://modelcontextprotocol.io)-Server bereit. Dann fragt man einfach: „Ich hab im Eichel-Solo EO, GO, HO, EU, GU, EA, E10, GA – wie oft hat ein Gegner SO mit drei Trumpf?“ Der Assistent schreibt daraus Szenario und Abfragen, rechnet und erklärt das Ergebnis.
+
+```
+cargo install --path crates/mcp
+claude mcp add zefix -- zefix-mcp        # Claude Code
+```
+
+Andere Clients (z. B. Claude Desktop) bekommen `{"mcpServers": {"zefix": {"command": "/pfad/zu/.cargo/bin/zefix-mcp"}}}`. Tools: `reference` (Config-Format und Abfragesprache), `check` (Szenario prüfen), `simulate` (rechnen, Standard 1 Mio. Blätter).
+
 ## Abfragesprache
 
 |                   |                                                                                                                           |
@@ -112,6 +123,7 @@ all(p in others, p.count(trumpf) <= me.count(trumpf))
 | `crates/core` (`zefix-core`) | Spielregeln, Abfragesprache, Simulation, Statistik |
 | `crates/cli` (`zefix-cli`) | Kommandozeile `zefix` |
 | `crates/app` (`zefix-app`) | Oberfläche für Desktop und Browser |
+| `crates/mcp` (`zefix-mcp`) | MCP-Server für KI-Assistenten |
 
 Die Oberfläche übersetzt ihre Bausteine in die Abfragesprache; Oberfläche und TOML haben also dieselbe Semantik. Regeln fürs Mitarbeiten stehen in [`AGENTS.md`](AGENTS.md).
 

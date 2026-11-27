@@ -1,0 +1,18 @@
+[package]
+name = "zefix-mcp"
+description = "MCP server exposing zefix-core to AI assistants"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "zefix-mcp"
+path = "src/main.rs"
+
+[dependencies]
+zefix-core = { workspace = true, features = ["parallel"] }
+anyhow.workspace = true
+rmcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+toml.workspace = true
